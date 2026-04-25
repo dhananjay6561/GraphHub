@@ -64,7 +64,7 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
 
       stopLoop();
       animFrameRef.current = requestAnimationFrame(tick);
-      _ = canvas; // satisfy lint
+      void canvas;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [searchQuery, selectedNode, hoveredNode, stopLoop]
@@ -142,5 +142,3 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
   };
 }
 
-// Satisfy TS about unused canvas ref in tick
-declare let _: unknown;

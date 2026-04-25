@@ -50,7 +50,7 @@ export function createRenderer(
     return quadtree.find(wx, wy, radius) ?? null;
   }
 
-  function nodeRadius(node: GraphNode, k: number): number {
+  function nodeRadius(node: GraphNode): number {
     if (node.type === "folder") return Math.max(40, Math.min(80, (node.connections + 1) * 4));
     if (node.type === "file") return Math.max(6, Math.min(18, (node.connections + 1) * 2));
     return 4;
@@ -102,7 +102,7 @@ export function createRenderer(
     for (const node of nodes) {
       if (node.type !== "folder") continue;
       if (node.x == null || node.y == null) continue;
-      const r = nodeRadius(node, k);
+      const r = nodeRadius(node);
 
       const faded = focusMode && !neighborIds.has(node.id);
       ctx.globalAlpha = faded ? COLORS.dimOpacity : 0.12;
@@ -121,7 +121,7 @@ export function createRenderer(
       if (k < 0.4 && node.type !== "folder") continue;
       if (k < 1 && (node.type === "function" || node.type === "class")) continue;
 
-      const r = nodeRadius(node, k);
+      const r = nodeRadius(node);
       const color = COLORS[node.type] ?? COLORS.file;
 
       const isSelected = selectedNode?.id === node.id;
@@ -161,7 +161,7 @@ export function createRenderer(
           (searchMode && matchingIds && !matchingIds.has(node.id));
         if (faded) continue;
 
-        const r = nodeRadius(node, k);
+        const r = nodeRadius(node);
         ctx.font = `${Math.max(8, 11 / k)}px sans-serif`;
         ctx.fillText(node.label, node.x, node.y + r + 10 / k);
       }
