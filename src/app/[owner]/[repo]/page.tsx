@@ -6,6 +6,7 @@ import { DetailPanel } from "@/components/Graph/DetailPanel";
 import { Sidebar } from "@/components/Graph/Sidebar";
 import { Topbar } from "@/components/Graph/Topbar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useMemo } from "react";
 import type { GraphNode, GraphData, GraphStatus, NodeType, EdgeType, ApiError } from "@/types";
 
 const DEFAULT_NODE_TYPES = new Set<NodeType>(["folder", "file", "function", "class"]);
@@ -33,6 +34,11 @@ export default function GraphPage({
   const [visibleEdges, setVisibleEdges] = useState<Set<EdgeType>>(DEFAULT_EDGE_TYPES);
 
   const canvasRef = useRef<GraphCanvasHandle>(null);
+
+  const nodeById = useMemo(
+    () => new Map((graphData?.nodes ?? []).map((n) => [n.id, n])),
+    [graphData]
+  );
 
   const handleToggleType = useCallback((type: NodeType) => {
     setVisibleTypes((prev) => {
@@ -129,7 +135,10 @@ export default function GraphPage({
 
         <DetailPanel
           node={selectedNode}
+          edges={graphData?.edges ?? []}
+          nodeById={nodeById}
           onClose={() => setSelectedNode(null)}
+          onNodeSelect={setSelectedNode}
         />
       </div>
     </div>

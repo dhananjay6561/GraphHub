@@ -1,13 +1,18 @@
-import type { GraphNode } from "@/types";
+import type { GraphNode, GraphEdge } from "@/types";
 import { NodeBadge } from "./NodeBadge";
 import { X } from "lucide-react";
 
 interface Props {
   node: GraphNode | null;
+  edges: GraphEdge[];
+  nodeById: Map<string, GraphNode>;
   onClose: () => void;
+  onNodeSelect: (node: GraphNode) => void;
 }
 
-export function DetailPanel({ node, onClose }: Props) {
+export function DetailPanel({ node, edges, nodeById, onClose, onNodeSelect }: Props) {
+  const neighbors = node ? getNeighbors(node.id, edges, nodeById) : [];
+
   return (
     <aside
       className="shrink-0 border-l overflow-hidden transition-[width] duration-200"
@@ -19,7 +24,7 @@ export function DetailPanel({ node, onClose }: Props) {
     >
       {node && (
         <div className="w-[320px] h-full overflow-y-auto flex flex-col">
-          {/* Panel header */}
+          {/* Header */}
           <div
             className="p-4 flex items-start justify-between gap-3 border-b shrink-0"
             style={{ borderColor: "var(--border)" }}
@@ -33,10 +38,7 @@ export function DetailPanel({ node, onClose }: Props) {
                 {node.label}
               </p>
               {node.path !== node.label && (
-                <p
-                  className="text-[12px] font-mono break-all"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
+                <p className="text-[12px] font-mono break-all" style={{ color: "var(--text-tertiary)" }}>
                   {node.path}
                 </p>
               )}
@@ -51,7 +53,7 @@ export function DetailPanel({ node, onClose }: Props) {
             </button>
           </div>
 
-          {/* Panel body */}
+          {/* Body */}
           <div className="flex flex-col">
             {node.language && (
               <Section label="LANGUAGE">
@@ -69,10 +71,31 @@ export function DetailPanel({ node, onClose }: Props) {
               </Section>
             )}
 
-            <Section label="CONNECTIONS">
-              <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-                {node.connections} connections
-              </p>
+            <Section label={`CONNECTIONS · ${neighbors.length}`}>
+              {neighbors.length === 0 ? (
+                <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>none</p>
+              ) : (
+                <div className="flex flex-col gap-0.5">
+                  {neighbors.map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => onNodeSelect(n)}
+                      className="flex items-center gap-2 text-left px-2 py-1 rounded-md transition-colors duration-150 hover:bg-[var(--bg-tertiary)] w-full"
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ background: NODE_COLOR[n.type] ?? "var(--text-tertiary)" }}
+                      />
+                      <span className="text-[12px] font-mono truncate" style={{ color: "var(--text-secondary)" }}>
+                        {n.label}
+                      </span>
+                      <span className="text-[11px] ml-auto shrink-0" style={{ color: "var(--text-tertiary)" }}>
+                        {n.type}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </Section>
           </div>
         </div>
@@ -84,13 +107,34 @@ export function DetailPanel({ node, onClose }: Props) {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
-      <p
-        className="text-[10px] font-semibold tracking-[0.08em] mb-2"
-        style={{ color: "var(--text-tertiary)" }}
-      >
+      <p className="text-[10px] font-semibold tracking-[0.08em] mb-2" style={{ color: "var(--text-tertiary)" }}>
         {label}
       </p>
       {children}
     </div>
   );
+}
+
+const NODE_COLOR: Record<string, string> = {
+  folder:   "var(--node-folder)",
+  file:     "var(--node-file)",
+  function: "var(--node-function)",
+  class:    "var(--node-class)",
+};
+
+function getNeighbors(
+  id: string,
+  edges: GraphEdge[],
+  nodeById: Map<string, GraphNode>
+): GraphNode[] {
+  const seen = new Set<string>();
+  const result: GraphNode[] = [];
+  for (const e of edges) {
+    const otherId = e.source === id ? e.target : e.target === id ? e.source : null;
+    if (otherId && !seen.has(otherId)) {
+      const n = nodeById.get(otherId);
+      if (n) { result.push(n); seen.add(otherId); }
+    }
+  }
+  return result;
 }
