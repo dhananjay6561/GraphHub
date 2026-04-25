@@ -126,9 +126,10 @@ export async function getFileContentsBatch(
   repo: string,
   paths: string[],
   sha: string
-): Promise<{ files: RawFile[]; failed: string[] }> {
+): Promise<{ files: RawFile[]; failed: string[]; rateLimited: boolean }> {
   const files: RawFile[] = [];
   const failed: string[] = [];
+  let rateLimited = false;
 
   for (let i = 0; i < paths.length; i += BATCH_SIZE) {
     const batch = paths.slice(i, i + BATCH_SIZE);
@@ -140,9 +141,18 @@ export async function getFileContentsBatch(
         files.push({ path: batch[idx], ...result.value });
       } else {
         failed.push(batch[idx]);
+        if (
+          result.reason instanceof GithubError &&
+          result.reason.code === "rate_limited"
+        ) {
+          rateLimited = true;
+        }
       }
     });
+
+    // Stop batching immediately if we know we're rate-limited
+    if (rateLimited) break;
   }
 
-  return { files, failed };
+  return { files, failed, rateLimited };
 }
