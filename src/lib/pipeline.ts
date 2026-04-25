@@ -1,5 +1,5 @@
 import "server-only";
-import { getFileTree, getFileContentsBatch } from "./github";
+import { getFileTree, getFileContentsBatch, GithubError } from "./github";
 import { cache, treeKey, fileKey, parsedKey, TTL_TREE, TTL_FILE, TTL_PARSED } from "./cache";
 import { shouldIncludeFile } from "./utils";
 import { parseAll } from "./parser";
@@ -49,12 +49,18 @@ export async function getParsedData(
     else uncachedPaths.push(f.path);
   }
 
-  const { files: fetched, failed } = await getFileContentsBatch(
+  const { files: fetched, failed, rateLimited } = await getFileContentsBatch(
     owner,
     repo,
     uncachedPaths,
     sha
   );
+
+  // If every uncached file failed due to rate-limiting, surface it so callers
+  // can return a proper 429 instead of an empty graph.
+  if (rateLimited && fetched.length === 0 && cachedFiles.length === 0) {
+    throw new GithubError("Rate limited", "rate_limited");
+  }
   for (const f of fetched) {
     cache.set(fileKey(owner, repo, sha, f.path), f, TTL_FILE);
   }
