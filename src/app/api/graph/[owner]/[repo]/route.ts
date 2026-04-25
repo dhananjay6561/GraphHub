@@ -4,12 +4,15 @@ import { cache, graphKey, parsedKey, fileKey, treeKey, TTL_GRAPH, TTL_PARSED, TT
 import { shouldIncludeFile } from "@/lib/utils";
 import { parseAll } from "@/lib/parser";
 import { buildGraph } from "@/lib/graph/buildGraph";
+import { validateParams } from "@/lib/validate";
 import type { GraphResponse, ParseResponse, ApiError } from "@/types";
 
 type Params = { params: { owner: string; repo: string } };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { owner, repo } = params;
+  const invalid = validateParams(owner, repo);
+  if (invalid) return invalid;
 
   try {
     const sha = await getLatestSHA(owner, repo);

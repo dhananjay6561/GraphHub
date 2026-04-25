@@ -3,12 +3,15 @@ import { getLatestSHA, getFileContentsBatch, getFileTree, GithubError } from "@/
 import { cache, parsedKey, fileKey, treeKey, TTL_PARSED, TTL_FILE, TTL_TREE } from "@/lib/cache";
 import { shouldIncludeFile } from "@/lib/utils";
 import { parseAll } from "@/lib/parser";
+import { validateParams } from "@/lib/validate";
 import type { ParseResponse, ApiError } from "@/types";
 
 type Params = { params: { owner: string; repo: string } };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { owner, repo } = params;
+  const invalid = validateParams(owner, repo);
+  if (invalid) return invalid;
 
   try {
     const sha = await getLatestSHA(owner, repo);

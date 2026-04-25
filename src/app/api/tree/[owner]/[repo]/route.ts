@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLatestSHA, getFileTree, GithubError } from "@/lib/github";
 import { cache, treeKey, TTL_TREE } from "@/lib/cache";
 import { shouldIncludeFile } from "@/lib/utils";
+import { validateParams } from "@/lib/validate";
 import type { TreeResponse, ApiError } from "@/types";
 
 type Params = { params: { owner: string; repo: string } };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { owner, repo } = params;
+  const invalid = validateParams(owner, repo);
+  if (invalid) return invalid;
 
   try {
     const sha = await getLatestSHA(owner, repo);
