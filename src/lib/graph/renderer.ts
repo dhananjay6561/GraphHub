@@ -69,6 +69,10 @@ export function createRenderer(
     ctx.translate(t.x, t.y);
     ctx.scale(k, k);
 
+    // Build id→node map once per frame — O(n) — replaces O(n) per-edge lookups
+    const nodeById = new Map<string, GraphNode>(nodes.map((n) => [n.id, n]));
+
+    // getNeighborIds now uses the map — O(edges) once, not per-node
     const neighborIds = getNeighborIds(selectedNode ?? hoveredNode, edges);
     const focusMode = selectedNode !== null || hoveredNode !== null;
     const searchMode = matchingIds !== null;
@@ -76,8 +80,8 @@ export function createRenderer(
     // ── edges ────────────────────────────────────────────────────────────────
 
     for (const edge of edges) {
-      const src = nodes.find((n) => n.id === edge.source);
-      const tgt = nodes.find((n) => n.id === edge.target);
+      const src = nodeById.get(edge.source);
+      const tgt = nodeById.get(edge.target);
       if (!src || !tgt || src.x == null || src.y == null || tgt.x == null || tgt.y == null) continue;
 
       // zoom-level culling
