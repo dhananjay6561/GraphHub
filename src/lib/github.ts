@@ -112,26 +112,64 @@ export async function getFileTree(
     .map((item) => ({ path: item.path as string, size: (item.size ?? 0) as number }));
 }
 
-export async function getFileContent(
-  owner: string,
-  repo: string,
-  filePath: string,
-  sha?: string
-): Promise<{ content: string; language: Language }> {
-  const ref = sha ? `?ref=${sha}` : "";
-  const res = await ghFetch(
-    `${BASE}/repos/${owner}/${repo}/contents/${filePath}${ref}`
-  );
-  const data = await res.json();
-  // GitHub returns null content + download_url for files >1MB
-  if (!data?.content || typeof data.content !== "string") {
-    throw new GithubError(`File too large or binary: ${filePath}`, "unknown");
-  }
-  const raw = Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf-8");
-  return { content: raw, language: detectLanguage(filePath) ?? "unknown" };
-}
+// ─── GraphQL file fetching ────────────────────────────────────────────────────
+// Uses the GraphQL API which has a separate 5000-point/hr quota from REST.
+// Batches all files into a single query using field aliases — far more efficient
+// than one REST request per file.
 
-const BATCH_SIZE = 10;
+const GRAPHQL_URL = "https://api.github.com/graphql";
+const GRAPHQL_BATCH = 80; // aliases per query, well within GitHub's complexity limit
+
+async function ghGraphQL(query: string): Promise<unknown> {
+  const tokens = getTokens();
+
+  for (let i = 0; i < Math.max(tokens.length, 1); i++) {
+    const token = tokens[i];
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      "User-Agent": "graphhub",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    let res: Response;
+    try {
+      res = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ query }),
+        next: { revalidate: 0 },
+      });
+    } catch {
+      throw new GithubError("GitHub unreachable", "unreachable");
+    }
+
+    if (res.status === 403 || res.status === 429) {
+      if (i < tokens.length - 1) continue;
+      const reset = res.headers.get("x-ratelimit-reset");
+      const retryAfter = reset
+        ? Math.max(0, Number(reset) - Math.floor(Date.now() / 1000))
+        : 60;
+      throw new GithubError("Rate limited", "rate_limited", retryAfter);
+    }
+
+    if (!res.ok) throw new GithubError(`GitHub GraphQL error ${res.status}`, "unknown");
+
+    const json = await res.json() as { data?: unknown; errors?: { type?: string; message: string }[] };
+
+    if (json.errors?.length) {
+      const first = json.errors[0];
+      if (first.type === "RATE_LIMITED") {
+        if (i < tokens.length - 1) continue;
+        throw new GithubError("Rate limited", "rate_limited");
+      }
+      throw new GithubError(first.message, "unknown");
+    }
+
+    return json.data;
+  }
+
+  throw new GithubError("No tokens available", "unknown");
+}
 
 export async function getFileContentsBatch(
   owner: string,
@@ -141,30 +179,43 @@ export async function getFileContentsBatch(
 ): Promise<{ files: RawFile[]; failed: string[]; rateLimited: boolean }> {
   const files: RawFile[] = [];
   const failed: string[] = [];
-  let rateLimited = false;
 
-  for (let i = 0; i < paths.length; i += BATCH_SIZE) {
-    const batch = paths.slice(i, i + BATCH_SIZE);
-    const results = await Promise.allSettled(
-      batch.map((p) => getFileContent(owner, repo, p, sha))
-    );
-    results.forEach((result, idx) => {
-      if (result.status === "fulfilled") {
-        files.push({ path: batch[idx], ...result.value });
+  for (let i = 0; i < paths.length; i += GRAPHQL_BATCH) {
+    const batch = paths.slice(i, i + GRAPHQL_BATCH);
+
+    // Build a query with one alias per file: f0, f1, ...
+    const aliases = batch
+      .map((p, idx) => {
+        const expr = `${sha}:${p}`.replace(/\\/g, "/").replace(/"/g, '\\"');
+        return `f${idx}: object(expression: "${expr}") { ... on Blob { text isBinary } }`;
+      })
+      .join("\n    ");
+
+    const query = `{ repository(owner: "${owner}", name: "${repo}") { ${aliases} } }`;
+
+    let data: Record<string, { text: string | null; isBinary: boolean } | null>;
+    try {
+      const result = await ghGraphQL(query) as { repository: Record<string, unknown> };
+      data = result.repository as typeof data;
+    } catch (err) {
+      if (err instanceof GithubError && err.code === "rate_limited") {
+        failed.push(...batch);
+        return { files, failed, rateLimited: true };
+      }
+      // Non-rate-limit error — mark batch as failed and continue
+      failed.push(...batch);
+      continue;
+    }
+
+    batch.forEach((p, idx) => {
+      const blob = data[`f${idx}`];
+      if (!blob || blob.isBinary || blob.text == null) {
+        failed.push(p);
       } else {
-        failed.push(batch[idx]);
-        if (
-          result.reason instanceof GithubError &&
-          result.reason.code === "rate_limited"
-        ) {
-          rateLimited = true;
-        }
+        files.push({ path: p, content: blob.text, language: detectLanguage(p) ?? "unknown" });
       }
     });
-
-    // Stop batching immediately if we know we're rate-limited
-    if (rateLimited) break;
   }
 
-  return { files, failed, rateLimited };
+  return { files, failed, rateLimited: false };
 }
