@@ -209,6 +209,55 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
     return rendererRef.current?.hitTest(x, y) ?? null;
   }, []);
 
+  // Node dragging — native listeners so we can intercept before D3 zoom
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let dragId: string | null = null;
+
+    function onMouseDown(e: MouseEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      const node = rendererRef.current?.hitTest(e.clientX - rect.left, e.clientY - rect.top);
+      if (!node) return;
+      dragId = node.id;
+      simRef.current?.pinNode(node.id, node.x ?? 0, node.y ?? 0);
+      simRef.current?.reheat();
+      // Stop D3 zoom from treating this mousedown as a pan start
+      e.stopImmediatePropagation();
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      if (!dragId) return;
+      const rect = canvas!.getBoundingClientRect();
+      const t = getTransform();
+      const wx = (e.clientX - rect.left - t.x) / t.k;
+      const wy = (e.clientY - rect.top - t.y) / t.k;
+      simRef.current?.pinNode(dragId, wx, wy);
+      requestRedraw();
+    }
+
+    function onMouseUp() {
+      if (!dragId) return;
+      simRef.current?.unpinNode(dragId);
+      dragId = null;
+      requestRedraw();
+    }
+
+    // capture: true so our handler runs before D3's mousedown listener
+    canvas.addEventListener("mousedown", onMouseDown, { capture: true });
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("mouseleave", onMouseUp);
+
+    return () => {
+      canvas.removeEventListener("mousedown", onMouseDown, { capture: true } as EventListenerOptions);
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("mouseup", onMouseUp);
+      canvas.removeEventListener("mouseleave", onMouseUp);
+    };
+  }, [canvasRef, getTransform, requestRedraw]);
+
   return {
     status,
     graphData,
