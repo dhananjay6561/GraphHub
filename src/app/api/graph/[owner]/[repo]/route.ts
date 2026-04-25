@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLatestSHA, getFileContentsBatch, getFileTree, GithubError } from "@/lib/github";
-import { cache, graphKey, parsedKey, fileKey, treeKey, TTL_GRAPH, TTL_PARSED, TTL_FILE, TTL_TREE } from "@/lib/cache";
-import { shouldIncludeFile } from "@/lib/utils";
-import { parseAll } from "@/lib/parser";
+import { getLatestSHA, GithubError } from "@/lib/github";
+import { cache, graphKey, TTL_GRAPH } from "@/lib/cache";
 import { buildGraph } from "@/lib/graph/buildGraph";
 import { validateParams } from "@/lib/validate";
-import type { GraphResponse, ParseResponse, ApiError } from "@/types";
+import { getParsedData } from "@/lib/pipeline";
+import type { GraphResponse, ApiError } from "@/types";
 
 type Params = { params: { owner: string; repo: string } };
+
+// In-flight deduplication: concurrent cold-cache requests for the same repo
+// share one Promise instead of each firing independent GitHub API calls.
+const inFlight = new Map<string, Promise<GraphResponse>>();
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { owner, repo } = params;
@@ -21,72 +24,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const cached = cache.get<GraphResponse>(key);
     if (cached) return NextResponse.json(cached);
 
-    // reuse parsed cache if available
-    let parsed: ParseResponse | undefined = cache.get<ParseResponse>(parsedKey(owner, repo, sha));
+    const flightKey = `${owner}/${repo}@${sha}`;
+    let promise = inFlight.get(flightKey);
 
-    if (!parsed) {
-      // fetch tree
-      let treeFiles: { path: string; size: number }[];
-      const treeCached = cache.get<{ files: { path: string; size: number }[] }>(treeKey(owner, repo, sha));
-      if (treeCached) {
-        treeFiles = treeCached.files;
-      } else {
-        const rawItems = await getFileTree(owner, repo, sha);
-        treeFiles = rawItems.filter(shouldIncludeFile);
-        cache.set(treeKey(owner, repo, sha), { sha, files: treeFiles, totalFiles: rawItems.length, filteredCount: treeFiles.length }, TTL_TREE);
-      }
-
-      const paths = treeFiles.map((f) => f.path);
-
-      const cachedFiles: { path: string; content: string }[] = [];
-      const uncachedPaths: string[] = [];
-      for (const p of paths) {
-        const hit = cache.get<{ path: string; content: string }>(fileKey(owner, repo, sha, p));
-        if (hit) cachedFiles.push(hit);
-        else uncachedPaths.push(p);
-      }
-
-      const { files: fetched, failed } = await getFileContentsBatch(owner, repo, uncachedPaths, sha);
-      for (const f of fetched) cache.set(fileKey(owner, repo, sha, f.path), f, TTL_FILE);
-
-      const allFiles = [...cachedFiles, ...fetched];
-      const { parsed: parsedFiles, errors } = parseAll(allFiles);
-
-      const stats = {
-        totalFiles: parsedFiles.length,
-        totalFunctions: parsedFiles.reduce((n, f) => n + f.functions.length, 0),
-        totalClasses: parsedFiles.reduce((n, f) => n + f.classes.length, 0),
-        totalImports: parsedFiles.reduce((n, f) => n + f.imports.length, 0),
-        languages: parsedFiles.reduce<Record<string, number>>((acc, f) => {
-          acc[f.language] = (acc[f.language] ?? 0) + 1;
-          return acc;
-        }, {}),
-      };
-
-      parsed = {
-        files: parsedFiles,
-        parseErrors: [...errors, ...failed.map((p) => ({ path: p, error: "fetch_failed" }))],
-        stats,
-      };
-      cache.set(parsedKey(owner, repo, sha), parsed, TTL_PARSED);
+    if (!promise) {
+      promise = buildResponse(owner, repo, sha, key).finally(() =>
+        inFlight.delete(flightKey)
+      );
+      inFlight.set(flightKey, promise);
     }
 
-    const graph = buildGraph(parsed.files);
-
-    const response: GraphResponse = {
-      graph,
-      meta: {
-        owner,
-        repo,
-        sha,
-        nodeCount: graph.nodes.length,
-        edgeCount: graph.edges.length,
-        clusterCount: Object.keys(graph.clusters).length,
-        cachedAt: new Date().toISOString(),
-      },
-    };
-
-    cache.set(key, response, TTL_GRAPH);
+    const response = await promise;
     return NextResponse.json(response);
   } catch (err) {
     if (err instanceof GithubError) {
@@ -97,4 +45,30 @@ export async function GET(_req: NextRequest, { params }: Params) {
     console.error("[graphhub] /api/graph error", err);
     return NextResponse.json({ error: "internal" } satisfies ApiError, { status: 500 });
   }
+}
+
+async function buildResponse(
+  owner: string,
+  repo: string,
+  sha: string,
+  cacheKey: string
+): Promise<GraphResponse> {
+  const parsed = await getParsedData(owner, repo, sha);
+  const graph = buildGraph(parsed.files);
+
+  const response: GraphResponse = {
+    graph,
+    meta: {
+      owner,
+      repo,
+      sha,
+      nodeCount: graph.nodes.length,
+      edgeCount: graph.edges.length,
+      clusterCount: Object.keys(graph.clusters).length,
+      cachedAt: new Date().toISOString(),
+    },
+  };
+
+  cache.set(cacheKey, response, TTL_GRAPH);
+  return response;
 }
