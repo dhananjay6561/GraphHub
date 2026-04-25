@@ -22,10 +22,15 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         this.props.fallback ?? (
-          <div className="flex h-full items-center justify-center text-slate-400 text-sm">
+          <div
+            className="flex h-full items-center justify-center text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
             <div className="text-center space-y-2">
-              <p className="text-red-400 font-mono">rendering error</p>
-              <p className="text-xs text-slate-500">{this.state.error.message}</p>
+              <p className="font-mono text-red-400">rendering error</p>
+              <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                {this.state.error.message}
+              </p>
             </div>
           </div>
         )

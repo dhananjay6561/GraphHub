@@ -11,17 +11,18 @@ interface UseGraphOptions {
   repo: string;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   getTransform: () => d3.ZoomTransform;
+  onStatusChange?: (status: GraphStatus) => void;
+  onGraphReady?: (data: GraphData) => void;
 }
 
 const ALPHA_IDLE = 0.001;
 
-export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptions) {
+export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange, onGraphReady }: UseGraphOptions) {
   const [status, setStatus] = useState<GraphStatus>("idle");
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
-  // Search is kept in a ref so changing it never triggers a re-fetch
   const searchQueryRef = useRef("");
   const [searchQuery, _setSearchQuery] = useState("");
 
@@ -33,11 +34,17 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
   const simRef = useRef<ReturnType<typeof createSimulation> | null>(null);
   const rendererRef = useRef<ReturnType<typeof createRenderer> | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  // Store latest selection in refs so the rAF loop always sees current values
-  // without needing to restart the loop on every state change
   const selectedNodeRef = useRef<GraphNode | null>(null);
   const hoveredNodeRef = useRef<GraphNode | null>(null);
   const graphDataRef = useRef<GraphData | null>(null);
+
+  const updateStatus = useCallback(
+    (s: GraphStatus) => {
+      setStatus(s);
+      onStatusChange?.(s);
+    },
+    [onStatusChange]
+  );
 
   const stopLoop = useCallback(() => {
     if (animFrameRef.current != null) {
@@ -84,7 +91,6 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
           matchingIds,
         });
 
-        // Stop rAF when simulation is stable — restart on interaction if needed
         if (currentSim.getAlpha() > ALPHA_IDLE) {
           animFrameRef.current = requestAnimationFrame(tick);
         } else {
@@ -95,21 +101,15 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
       animFrameRef.current = requestAnimationFrame(tick);
     },
     [stopLoop]
-    // Intentionally omits selectedNode/hoveredNode/searchQuery —
-    // those are read from refs inside tick(), so this callback never
-    // needs to be recreated when selection or search changes.
   );
 
-  // Restart rAF for a single frame whenever selection/search changes
-  // (sim is stable but we need one redraw)
   const requestRedraw = useCallback(() => {
-    if (animFrameRef.current != null) return; // loop already running
+    if (animFrameRef.current != null) return;
     const data = graphDataRef.current;
     if (!data) return;
     startRenderLoop(data);
   }, [startRenderLoop]);
 
-  // Keep refs in sync
   const wrappedSetSelectedNode = useCallback(
     (node: GraphNode | null) => {
       selectedNodeRef.current = node;
@@ -137,7 +137,7 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
   );
 
   const load = useCallback(async () => {
-    setStatus("loading");
+    updateStatus("loading");
     setError(null);
 
     try {
@@ -146,14 +146,15 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
 
       if (!res.ok) {
         setError(json as ApiError);
-        setStatus("error");
+        updateStatus("error");
         return;
       }
 
       const { graph } = json as { graph: GraphData };
       setGraphData(graph);
       graphDataRef.current = graph;
-      setStatus("simulating");
+      onGraphReady?.(graph);
+      updateStatus("simulating");
 
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -169,12 +170,12 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
 
       sim.start();
       startRenderLoop(graph);
-      setStatus("ready");
+      updateStatus("ready");
     } catch (err) {
       setError({ error: "internal", message: String(err) });
-      setStatus("error");
+      updateStatus("error");
     }
-  }, [owner, repo, canvasRef, getTransform, startRenderLoop]);
+  }, [owner, repo, canvasRef, getTransform, startRenderLoop, updateStatus, onGraphReady]);
 
   useEffect(() => {
     load();
@@ -199,6 +200,7 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
     searchQuery,
     setSearchQuery: wrappedSetSearchQuery,
     hitTest,
+    requestRedraw,
     reload: load,
   };
 }

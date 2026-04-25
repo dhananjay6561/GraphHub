@@ -5,15 +5,10 @@ import { useRouter } from "next/navigation";
 
 function parseGithubUrl(input: string): { owner: string; repo: string } | null {
   const trimmed = input.trim().replace(/\.git$/, "");
-
-  // full URL: https://github.com/owner/repo[/anything]
   const urlMatch = trimmed.match(/github\.com\/([^/]+)\/([^/?\s]+)/);
   if (urlMatch) return { owner: urlMatch[1], repo: urlMatch[2] };
-
-  // bare: owner/repo
   const bareMatch = trimmed.match(/^([^/\s]+)\/([^/\s]+)$/);
   if (bareMatch) return { owner: bareMatch[1], repo: bareMatch[2] };
-
   return null;
 }
 
@@ -34,21 +29,33 @@ export function UrlInput() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col items-center gap-3 w-full max-w-xl">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => { setValue(e.target.value); setError(""); }}
-        placeholder="https://github.com/owner/repo"
-        className="w-full border border-slate-600 bg-slate-900 text-slate-100 px-4 py-2 rounded text-sm outline-none focus:border-indigo-500"
-      />
-      {error && <p className="text-red-400 text-xs">{error}</p>}
-      <button
-        type="submit"
-        className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-sm"
-      >
-        Visualize
-      </button>
-    </form>
+    <div className="w-full flex flex-col gap-2">
+      <form onSubmit={handleSubmit} className="flex w-full" style={{ height: "44px" }}>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setError("");
+          }}
+          placeholder="https://github.com/owner/repo"
+          className="flex-1 font-mono text-[13px] px-4 outline-none transition-colors duration-150 bg-[var(--bg-secondary)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] border border-[var(--border)] focus:border-[var(--accent)] border-r-0 rounded-l-md h-full"
+        />
+        <button
+          type="submit"
+          className="px-5 text-[13px] font-medium shrink-0 transition-colors duration-150 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--bg-primary)] border border-[var(--accent)] rounded-r-md h-full"
+        >
+          Visualize
+        </button>
+      </form>
+
+      {error && (
+        <p className="text-[12px] font-mono text-red-400">{error}</p>
+      )}
+
+      <p className="text-[12px] font-mono text-[var(--text-tertiary)]">
+        or just replace github.com → graphhub.dev in your browser
+      </p>
+    </div>
   );
 }

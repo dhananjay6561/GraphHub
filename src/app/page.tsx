@@ -1,101 +1,138 @@
+import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { UrlInput } from "@/components/UrlInput";
+import { ExampleRepos } from "@/components/ExampleRepos";
+import { FeatureHints } from "@/components/FeatureHints";
 
 export default function Home() {
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0F172A] px-4">
-      {/* Background grid */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
+    <div
+      className="flex flex-col min-h-screen"
+      style={{ background: "var(--bg-primary)" }}
+    >
+      {/* Header */}
+      <header
+        className="sticky top-0 z-10 flex items-center justify-between border-b"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
+          background: "var(--bg-primary)",
+          borderColor: "var(--border)",
+          padding: "0 32px",
+          height: "56px",
         }}
-      />
-
-      {/* Glow blobs */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/4 top-1/4 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/10 blur-[120px]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-1/4 bottom-1/3 h-[300px] w-[300px] rounded-full bg-emerald-500/8 blur-[100px]"
-      />
-
-      {/* Content */}
-      <div className="relative z-10 flex w-full max-w-2xl flex-col items-center gap-10 text-center">
-        {/* Badge */}
-        <div className="flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-medium text-indigo-300">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#22d3ee]" />
-          Developer tool · Open source
+      >
+        <Logo />
+        <div className="flex items-center gap-1">
+          <a
+            href="https://github.com/dhananjay6561/GraphHub"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-150 hover:bg-[var(--bg-tertiary)]"
+            style={{ color: "var(--text-secondary)" }}
+            aria-label="View on GitHub"
+          >
+            {/* GitHub mark */}
+            <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+            </svg>
+          </a>
+          <ThemeToggle />
         </div>
+      </header>
 
-        {/* Heading */}
-        <div className="space-y-4">
-          <h1 className="font-mono-heading text-5xl font-bold tracking-tight text-white sm:text-6xl">
-            Graph<span className="text-indigo-400">Hub</span>
+      {/* Main */}
+      <main
+        className="flex-1 flex items-start justify-center px-4"
+        style={{ paddingTop: "96px" }}
+      >
+        <div className="w-full max-w-[680px] flex flex-col items-center text-center">
+          {/* Eyebrow badge */}
+          <div
+            className="animate-fadeup inline-flex items-center rounded-full text-[11px] border"
+            style={{
+              animationDelay: "0ms",
+              background: "var(--accent-subtle)",
+              color: "var(--accent)",
+              borderColor: "rgba(138, 171, 150, 0.3)",
+              padding: "4px 12px",
+            }}
+          >
+            Open source · Free forever
+          </div>
+
+          {/* Headline */}
+          <h1
+            className="animate-fadeup font-medium text-center"
+            style={{
+              animationDelay: "60ms",
+              fontSize: "40px",
+              lineHeight: "1.2",
+              color: "var(--text-primary)",
+              maxWidth: "560px",
+              marginTop: "20px",
+            }}
+          >
+            Visualize any GitHub repo as an interactive knowledge graph
           </h1>
-          <p className="text-lg leading-relaxed text-slate-400 sm:text-xl">
-            Replace{" "}
-            <code className="rounded-md bg-slate-800 px-2 py-0.5 text-sm font-mono text-slate-300">
-              github.com
-            </code>{" "}
-            with{" "}
-            <code className="rounded-md bg-indigo-900/60 px-2 py-0.5 text-sm font-mono text-indigo-300">
-              graphhub.dev
-            </code>{" "}
-            in any repo URL to instantly explore it as a knowledge graph.
+
+          {/* Subheadline */}
+          <p
+            className="animate-fadeup"
+            style={{
+              animationDelay: "120ms",
+              fontSize: "15px",
+              lineHeight: "1.7",
+              color: "var(--text-secondary)",
+              maxWidth: "480px",
+              marginTop: "16px",
+            }}
+          >
+            Replace github.com with graphhub.dev in any repo URL and explore its
+            codebase as a living, interactive graph.
           </p>
-        </div>
 
-        {/* URL Input */}
-        <UrlInput />
+          {/* URL input */}
+          <div
+            className="animate-fadeup w-full"
+            style={{ animationDelay: "180ms", marginTop: "40px" }}
+          >
+            <UrlInput />
+          </div>
 
-        {/* Example links */}
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-xs text-slate-500 uppercase tracking-widest">try an example</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {[
-              { label: "vercel/next.js", path: "vercel/next.js" },
-              { label: "facebook/react", path: "facebook/react" },
-              { label: "microsoft/vscode", path: "microsoft/vscode" },
-            ].map((ex) => (
-              <a
-                key={ex.path}
-                href={`/${ex.path}`}
-                className="rounded-full border border-slate-700 bg-slate-800/60 px-3 py-1 text-xs text-slate-400 transition-colors duration-200 hover:border-indigo-500/50 hover:bg-indigo-900/30 hover:text-indigo-300 cursor-pointer"
-              >
-                {ex.label}
-              </a>
-            ))}
+          {/* Examples */}
+          <div
+            className="animate-fadeup w-full"
+            style={{ animationDelay: "240ms", marginTop: "32px" }}
+          >
+            <ExampleRepos />
+          </div>
+
+          {/* Feature hints */}
+          <div
+            className="animate-fadeup w-full"
+            style={{ animationDelay: "320ms", marginTop: "64px" }}
+          >
+            <FeatureHints />
           </div>
         </div>
-
-        {/* Feature grid */}
-        <div className="mt-4 grid w-full grid-cols-3 gap-3">
-          {[
-            { icon: "⬡", label: "Force graph", desc: "D3 physics simulation" },
-            { icon: "◈", label: "Multi-language", desc: "JS · TS · Python · Go" },
-            { icon: "⬡", label: "SHA-cached", desc: "Instant on repeat visits" },
-          ].map((f) => (
-            <div
-              key={f.label}
-              className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-left"
-            >
-              <span className="text-lg text-indigo-400 select-none" aria-hidden>{f.icon}</span>
-              <p className="mt-2 text-xs font-semibold text-slate-200 font-mono-heading">{f.label}</p>
-              <p className="mt-0.5 text-xs text-slate-500">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      </main>
 
       {/* Footer */}
-      <footer className="absolute bottom-6 left-0 right-0 text-center text-xs text-slate-600">
-        graphhub.dev — open source
+      <footer
+        className="flex items-center justify-between border-t text-[12px]"
+        style={{
+          borderColor: "var(--border)",
+          color: "var(--text-tertiary)",
+          padding: "24px 32px",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>
+            GraphHub
+          </span>
+          <span>© 2025</span>
+        </div>
+        <span>Built for developers</span>
       </footer>
-    </main>
+    </div>
   );
 }

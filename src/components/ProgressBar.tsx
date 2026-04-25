@@ -1,18 +1,37 @@
 import type { GraphStatus } from "@/types";
 
-const LABELS: Record<GraphStatus, string> = {
-  idle: "",
-  loading: "Loading graph...",
+interface Props {
+  status: GraphStatus;
+  stats?: { nodeCount: number; edgeCount: number };
+}
+
+const STEP_LABEL: Partial<Record<GraphStatus, string>> = {
+  loading: "Building graph...",
   simulating: "Simulating...",
-  ready: "Ready",
-  error: "Error",
+  error: "Failed to load",
 };
 
-export function ProgressBar({ status }: { status: GraphStatus }) {
-  if (status === "idle" || status === "ready") return null;
+export function ProgressBar({ status, stats }: Props) {
+  if (status === "idle") return null;
+
+  if (status === "ready" && stats) {
+    return (
+      <p className="text-[12px] font-mono" style={{ color: "var(--text-tertiary)" }}>
+        · {stats.nodeCount.toLocaleString()} nodes · {stats.edgeCount.toLocaleString()} edges
+      </p>
+    );
+  }
+
+  const label = STEP_LABEL[status];
+  if (!label) return null;
+
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-slate-800 text-slate-300 text-xs px-3 py-1 rounded z-10">
-      {LABELS[status]}
-    </div>
+    <p
+      className="flex items-center gap-1.5 text-[13px]"
+      style={{ color: "var(--text-secondary)" }}
+    >
+      <span className="animate-pulse-dot select-none">·</span>
+      {label}
+    </p>
   );
 }
