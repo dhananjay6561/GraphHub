@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useGraph } from "@/hooks/useGraph";
 import { useZoom } from "@/hooks/useZoom";
-import type { GraphNode, NodeType, GraphStatus, GraphData } from "@/types";
+import type { GraphNode, NodeType, GraphStatus, GraphData, ApiError } from "@/types";
 
 export interface GraphCanvasHandle {
   zoomIn: () => void;
@@ -23,13 +23,14 @@ interface Props {
   onNodeSelect: (node: GraphNode | null) => void;
   onStatusChange?: (status: GraphStatus) => void;
   onGraphReady?: (data: GraphData) => void;
+  onError?: (err: ApiError) => void;
   searchQuery?: string;
   visibleTypes?: Set<NodeType>;
 }
 
 export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(
   function GraphCanvas(
-    { owner, repo, onNodeSelect, onStatusChange, onGraphReady, searchQuery },
+    { owner, repo, onNodeSelect, onStatusChange, onGraphReady, onError, searchQuery },
     ref
   ) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,6 +53,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(
         getTransform,
         onStatusChange,
         onGraphReady,
+        onError,
       });
 
     // Trigger a redraw after zoom/pan so canvas updates even when sim is settled

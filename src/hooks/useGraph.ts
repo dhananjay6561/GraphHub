@@ -13,11 +13,12 @@ interface UseGraphOptions {
   getTransform: () => d3.ZoomTransform;
   onStatusChange?: (status: GraphStatus) => void;
   onGraphReady?: (data: GraphData) => void;
+  onError?: (err: ApiError) => void;
 }
 
 const ALPHA_IDLE = 0.001;
 
-export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange, onGraphReady }: UseGraphOptions) {
+export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange, onGraphReady, onError }: UseGraphOptions) {
   const [status, setStatus] = useState<GraphStatus>("idle");
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -145,7 +146,9 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
       const json = await res.json();
 
       if (!res.ok) {
-        setError(json as ApiError);
+        const apiErr = json as ApiError;
+        setError(apiErr);
+        onError?.(apiErr);
         updateStatus("error");
         return;
       }
