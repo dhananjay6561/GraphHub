@@ -4,13 +4,14 @@ import * as d3 from "d3";
 import type { GraphNode, GraphEdge } from "@/types";
 
 const COLORS = {
-  folder: "#6366f1",
-  file: "#22d3ee",
-  function: "#10b981",
-  class: "#f59e0b",
-  edge: "#334155",
-  edgeFaded: "#1e293b",
-  dimOpacity: 0.2,
+  folder:   "#7c7c8a",
+  file:     "#8b9dc4",
+  function: "#8aab96",
+  class:    "#c4a96e",
+  edge:     "#2e2e38",
+  label:    "#a09f9a",
+  selected: "#f0efe9",
+  dimOpacity: 0.15,
 };
 
 export interface RenderState {
@@ -18,13 +19,15 @@ export interface RenderState {
   edges: GraphEdge[];
   selectedNode: GraphNode | null;
   hoveredNode: GraphNode | null;
-  matchingIds: Set<string> | null; // non-null when search active
+  matchingIds: Set<string> | null;
+  visibleTypes: Set<string> | null;
+  visibleEdges: Set<string> | null;
 }
 
 export interface RendererHandle {
   draw: (state: RenderState) => void;
   hitTest: (x: number, y: number) => GraphNode | null;
-  updateQuadtree: (nodes: GraphNode[]) => void;
+  updateQuadtree: (nodes: GraphNode[], visibleTypes?: Set<string> | null) => void;
 }
 
 export function createRenderer(
@@ -34,12 +37,15 @@ export function createRenderer(
   const ctx = canvas.getContext("2d")!;
   let quadtree = d3.quadtree<GraphNode>();
 
-  function updateQuadtree(nodes: GraphNode[]) {
+  function updateQuadtree(nodes: GraphNode[], visibleTypes?: Set<string> | null) {
+    const visible = visibleTypes
+      ? nodes.filter((n) => visibleTypes.has(n.type))
+      : nodes;
     quadtree = d3
       .quadtree<GraphNode>()
       .x((n) => n.x ?? 0)
       .y((n) => n.y ?? 0)
-      .addAll(nodes);
+      .addAll(visible);
   }
 
   function hitTest(screenX: number, screenY: number): GraphNode | null {
@@ -51,48 +57,58 @@ export function createRenderer(
   }
 
   function nodeRadius(node: GraphNode): number {
-    if (node.type === "folder") return Math.max(40, Math.min(80, (node.connections + 1) * 4));
-    if (node.type === "file") return Math.max(6, Math.min(18, (node.connections + 1) * 2));
-    return 4;
+    if (node.type === "folder") return Math.max(12, Math.min(28, (node.connections + 1) * 2.5));
+    if (node.type === "file")   return Math.max(5,  Math.min(12, (node.connections + 1) * 1.2));
+    return 3;
   }
 
   function draw(state: RenderState) {
-    const { nodes, edges, selectedNode, hoveredNode, matchingIds } = state;
+    const { nodes, edges, selectedNode, hoveredNode, matchingIds, visibleTypes, visibleEdges } = state;
     const t = getTransform();
     const k = t.k;
 
-    const w = canvas.width;
-    const h = canvas.height;
-
-    ctx.clearRect(0, 0, w, h);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(t.x, t.y);
     ctx.scale(k, k);
 
-    // Build id→node map once per frame — O(n) — replaces O(n) per-edge lookups
     const nodeById = new Map<string, GraphNode>(nodes.map((n) => [n.id, n]));
-
-    // getNeighborIds now uses the map — O(edges) once, not per-node
     const neighborIds = getNeighborIds(selectedNode ?? hoveredNode, edges);
     const focusMode = selectedNode !== null || hoveredNode !== null;
     const searchMode = matchingIds !== null;
 
-    // ── edges ────────────────────────────────────────────────────────────────
+    // ── folder halos ─────────────────────────────────────────────────────────
+    for (const node of nodes) {
+      if (node.type !== "folder") continue;
+      if (visibleTypes && !visibleTypes.has("folder")) continue;
+      if (node.x == null || node.y == null) continue;
 
+      const r = nodeRadius(node);
+      const faded = focusMode && !neighborIds.has(node.id);
+      ctx.globalAlpha = faded ? 0.03 : 0.07;
+      ctx.fillStyle = COLORS.folder;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, r * 4.5, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    // ── edges ─────────────────────────────────────────────────────────────────
     for (const edge of edges) {
+      if (visibleEdges && !visibleEdges.has(edge.type)) continue;
+
       const src = nodeById.get(edge.source);
       const tgt = nodeById.get(edge.target);
       if (!src || !tgt || src.x == null || src.y == null || tgt.x == null || tgt.y == null) continue;
+      if (visibleTypes && (!visibleTypes.has(src.type) || !visibleTypes.has(tgt.type))) continue;
 
-      // zoom-level culling
-      if (k < 0.4 && edge.type !== "import") continue;
-      if (k < 0.4 && src.type !== "folder" && tgt.type !== "folder") continue;
+      // hide less important edges when zoomed out
+      if (k < 0.3 && edge.type !== "import") continue;
 
       const faded =
         (focusMode && !neighborIds.has(edge.source) && !neighborIds.has(edge.target)) ||
         (searchMode && matchingIds && !matchingIds.has(edge.source) && !matchingIds.has(edge.target));
 
-      ctx.globalAlpha = faded ? COLORS.dimOpacity : 0.5;
+      ctx.globalAlpha = faded ? COLORS.dimOpacity * 0.5 : 0.35;
       ctx.strokeStyle = COLORS.edge;
       ctx.lineWidth = 1 / k;
       ctx.beginPath();
@@ -101,73 +117,70 @@ export function createRenderer(
       ctx.stroke();
     }
 
-    // ── folder bubbles ───────────────────────────────────────────────────────
-
+    // ── nodes ─────────────────────────────────────────────────────────────────
     for (const node of nodes) {
-      if (node.type !== "folder") continue;
-      if (node.x == null || node.y == null) continue;
-      const r = nodeRadius(node);
-
-      const faded = focusMode && !neighborIds.has(node.id);
-      ctx.globalAlpha = faded ? COLORS.dimOpacity : 0.12;
-      ctx.fillStyle = COLORS.folder;
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, r * 3, 0, 2 * Math.PI);
-      ctx.fill();
-    }
-
-    // ── nodes ────────────────────────────────────────────────────────────────
-
-    for (const node of nodes) {
+      if (visibleTypes && !visibleTypes.has(node.type)) continue;
       if (node.x == null || node.y == null) continue;
 
-      // zoom-level visibility
-      if (k < 0.4 && node.type !== "folder") continue;
-      if (k < 1 && (node.type === "function" || node.type === "class")) continue;
+      // progressive detail — hide small nodes when far out
+      if (k < 0.3 && node.type !== "folder") continue;
+      if (k < 0.7 && (node.type === "function" || node.type === "class")) continue;
 
       const r = nodeRadius(node);
-      const color = COLORS[node.type] ?? COLORS.file;
-
+      const color = COLORS[node.type as keyof typeof COLORS] ?? COLORS.file;
       const isSelected = selectedNode?.id === node.id;
-      const isHovered = hoveredNode?.id === node.id;
-      const isMatch = searchMode && matchingIds?.has(node.id);
+      const isHovered  = hoveredNode?.id === node.id;
+      const isMatch    = searchMode && matchingIds?.has(node.id);
       const faded =
         (focusMode && !neighborIds.has(node.id) && !isSelected && !isHovered) ||
         (searchMode && matchingIds && !matchingIds.has(node.id));
 
       ctx.globalAlpha = faded ? COLORS.dimOpacity : 1;
-
       ctx.beginPath();
       ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = color;
+      ctx.fillStyle = color as string;
       ctx.fill();
 
       if (isSelected || isHovered || isMatch) {
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2 / k;
+        ctx.strokeStyle = isSelected ? COLORS.selected : (color as string);
+        ctx.lineWidth = isSelected ? 2.5 / k : 1.5 / k;
+        ctx.globalAlpha = 1;
         ctx.stroke();
+
+        // outer glow ring for selected
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r + 6 / k, 0, 2 * Math.PI);
+          ctx.strokeStyle = color as string;
+          ctx.lineWidth = 1 / k;
+          ctx.globalAlpha = 0.4;
+          ctx.stroke();
+        }
       }
     }
 
-    // ── labels ───────────────────────────────────────────────────────────────
-
-    if (k > 0.7) {
-      ctx.fillStyle = "#e2e8f0";
+    // ── labels ────────────────────────────────────────────────────────────────
+    if (k > 0.6) {
       ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      ctx.textBaseline = "top";
 
       for (const node of nodes) {
+        if (visibleTypes && !visibleTypes.has(node.type)) continue;
         if (node.x == null || node.y == null) continue;
-        if (k < 1 && (node.type === "function" || node.type === "class")) continue;
+        if (k < 0.9 && (node.type === "function" || node.type === "class")) continue;
+        if (k < 0.6 && node.type === "file") continue;
 
         const faded =
           (focusMode && !neighborIds.has(node.id)) ||
           (searchMode && matchingIds && !matchingIds.has(node.id));
-        if (faded) continue;
+        if (faded && !searchMode) continue;
 
         const r = nodeRadius(node);
-        ctx.font = `${Math.max(8, 11 / k)}px sans-serif`;
-        ctx.fillText(node.label, node.x, node.y + r + 10 / k);
+        const fontSize = Math.max(9, 11 / k);
+        ctx.font = `${fontSize}px ui-monospace, monospace`;
+        ctx.fillStyle = COLORS.label;
+        ctx.globalAlpha = faded ? COLORS.dimOpacity : 0.85;
+        ctx.fillText(node.label, node.x, node.y + r + 4 / k);
       }
     }
 
@@ -177,10 +190,7 @@ export function createRenderer(
   return { draw, hitTest, updateQuadtree };
 }
 
-function getNeighborIds(
-  node: GraphNode | null,
-  edges: GraphEdge[]
-): Set<string> {
+function getNeighborIds(node: GraphNode | null, edges: GraphEdge[]): Set<string> {
   if (!node) return new Set();
   const ids = new Set<string>([node.id]);
   for (const e of edges) {
