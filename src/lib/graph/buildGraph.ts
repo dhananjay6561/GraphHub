@@ -80,6 +80,19 @@ export function buildGraph(parsedFiles: ParsedFile[]): GraphData {
   // Build a fast id→node map for O(1) connection increments
   const nodeById = new Map<string, GraphNode>(nodes.map((n) => [n.id, n]));
 
+  // ── Folder → file contains edges ──────────────────────────────────────────
+
+  for (const file of parsedFiles) {
+    const cluster = topLevelFolder(file.path);
+    const fileId = fileIdMap.get(file.path);
+    const folderId = `folder:${cluster}`;
+    if (fileId && nodeById.has(folderId)) {
+      addEdge(edges, edgeSet, folderId, fileId, "contains");
+      bump(nodeById, folderId);
+      bump(nodeById, fileId);
+    }
+  }
+
   // ── Import edges ──────────────────────────────────────────────────────────
 
   for (const file of parsedFiles) {
