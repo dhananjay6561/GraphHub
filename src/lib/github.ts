@@ -19,36 +19,48 @@ export class GithubError extends Error {
 
 const BASE = "https://api.github.com";
 
-function authHeaders(): HeadersInit {
-  const token = process.env.GITHUB_TOKEN;
-  return token
-    ? { Authorization: `Bearer ${token}`, "User-Agent": "graphhub" }
-    : { "User-Agent": "graphhub" };
+function getTokens(): string[] {
+  return [
+    process.env.GITHUB_TOKEN,
+    process.env.GITHUB_TOKEN_2,
+  ].filter((t): t is string => typeof t === "string" && t.length > 0);
 }
 
 async function ghFetch(url: string): Promise<Response> {
-  let res: Response;
-  try {
-    res = await fetch(url, { headers: authHeaders(), next: { revalidate: 0 } });
-  } catch {
-    throw new GithubError("GitHub unreachable", "unreachable");
+  const tokens = getTokens();
+
+  // Try each token in order, moving to the next on rate limit
+  for (let i = 0; i < Math.max(tokens.length, 1); i++) {
+    const token = tokens[i];
+    const headers: HeadersInit = token
+      ? { Authorization: `Bearer ${token}`, "User-Agent": "graphhub" }
+      : { "User-Agent": "graphhub" };
+
+    let res: Response;
+    try {
+      res = await fetch(url, { headers, next: { revalidate: 0 } });
+    } catch {
+      throw new GithubError("GitHub unreachable", "unreachable");
+    }
+
+    if (res.status === 404) throw new GithubError("Not found", "not_found");
+
+    if (res.status === 403 || res.status === 429) {
+      // Try the next token if available
+      if (i < tokens.length - 1) continue;
+      const reset = res.headers.get("x-ratelimit-reset");
+      const retryAfter = reset
+        ? Math.max(0, Number(reset) - Math.floor(Date.now() / 1000))
+        : 60;
+      throw new GithubError("Rate limited", "rate_limited", retryAfter);
+    }
+
+    if (!res.ok) throw new GithubError(`GitHub error ${res.status}`, "unknown");
+
+    return res;
   }
 
-  if (res.status === 404)
-    throw new GithubError("Not found", "not_found");
-
-  if (res.status === 403 || res.status === 429) {
-    const reset = res.headers.get("x-ratelimit-reset");
-    const retryAfter = reset
-      ? Math.max(0, Number(reset) - Math.floor(Date.now() / 1000))
-      : 60;
-    throw new GithubError("Rate limited", "rate_limited", retryAfter);
-  }
-
-  if (!res.ok)
-    throw new GithubError(`GitHub error ${res.status}`, "unknown");
-
-  return res;
+  throw new GithubError("No tokens available", "unknown");
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
