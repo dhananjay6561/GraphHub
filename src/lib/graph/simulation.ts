@@ -36,42 +36,41 @@ export function createSimulation(
 
   // Per-type charge: folders push hard, functions/classes barely repel each other
   const charge = d3.forceManyBody<SimNode>().strength((d) => {
-    if (d.type === "folder") return -600;
-    if (d.type === "file") return -250;
-    return -60;
+    if (d.type === "folder") return -1200;
+    if (d.type === "file")   return -500;
+    return -200;
   });
 
-  // Per-edge link distance: hierarchy gets more breathing room
   const link = d3
     .forceLink<SimNode, (typeof simEdges)[number]>(simEdges)
     .id((d) => d.id)
     .distance((e) => {
       const t = (e as { type?: string }).type;
-      if (t === "contains") return 50;
-      if (t === "import") return 90;
-      return 70;
+      if (t === "contains") return 80;
+      if (t === "import")   return 140;
+      return 100;
     })
     .strength((e) => {
       const t = (e as { type?: string }).type;
-      return t === "contains" ? 0.8 : 0.4;
+      return t === "contains" ? 0.6 : 0.3;
     });
 
   const simulation = d3
     .forceSimulation<SimNode>(simNodes)
     .force("link", link)
     .force("charge", charge)
-    .force("center", d3.forceCenter(width / 2, height / 2).strength(0.04))
+    .force("center", d3.forceCenter(width / 2, height / 2).strength(0.03))
     .force(
       "collide",
       d3.forceCollide<SimNode>().radius((d) => {
-        if (d.type === "folder") return 80;
-        if (d.type === "file") return 16;
-        return 8;
-      }).strength(0.8)
+        if (d.type === "folder")   return 120;
+        if (d.type === "file")     return 28;
+        return 18;
+      }).strength(0.9)
     )
     .force("cluster", clusterForce())
-    .alphaDecay(0.025)
-    .velocityDecay(0.55);
+    .alphaDecay(0.022)
+    .velocityDecay(0.6);
 
   function clusterForce() {
     return function () {
