@@ -1,3 +1,4 @@
+import "server-only";
 import NodeCache from "node-cache";
 
 // ─── Interface ────────────────────────────────────────────────────────────────
@@ -11,11 +12,16 @@ export interface CacheStore {
 
 // ─── node-cache implementation ────────────────────────────────────────────────
 
+// Cap at 500 entries to prevent unbounded memory growth.
+// Each graph response for a large repo can be several MB — 500 entries puts
+// a ceiling of roughly 500MB worst-case before keys get evicted.
+const MAX_KEYS = 500;
+
 class NodeCacheStore implements CacheStore {
   private store: NodeCache;
 
   constructor() {
-    this.store = new NodeCache({ useClones: false });
+    this.store = new NodeCache({ useClones: false, maxKeys: MAX_KEYS });
   }
 
   get<T>(key: string): T | undefined {
@@ -45,15 +51,20 @@ export const TTL_PARSED = 86_400;
 export const TTL_GRAPH = 86_400;
 
 // ─── Key builders ─────────────────────────────────────────────────────────────
+// Use \x00 as separator — never valid in a GitHub owner, repo name, SHA, or
+// file path, so collisions between e.g. owner="a:b" and owner="a",repo="b"
+// are impossible.
+
+const SEP = "\x00";
 
 export const treeKey = (owner: string, repo: string, sha: string) =>
-  `tree:${owner}:${repo}:${sha}`;
+  `tree${SEP}${owner}${SEP}${repo}${SEP}${sha}`;
 
 export const fileKey = (owner: string, repo: string, sha: string, filePath: string) =>
-  `file:${owner}:${repo}:${sha}:${filePath}`;
+  `file${SEP}${owner}${SEP}${repo}${SEP}${sha}${SEP}${filePath}`;
 
 export const parsedKey = (owner: string, repo: string, sha: string) =>
-  `parsed:${owner}:${repo}:${sha}`;
+  `parsed${SEP}${owner}${SEP}${repo}${SEP}${sha}`;
 
 export const graphKey = (owner: string, repo: string, sha: string) =>
-  `graph:${owner}:${repo}:${sha}`;
+  `graph${SEP}${owner}${SEP}${repo}${SEP}${sha}`;
