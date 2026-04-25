@@ -13,17 +13,31 @@ interface UseGraphOptions {
   getTransform: () => d3.ZoomTransform;
 }
 
+const ALPHA_IDLE = 0.001;
+
 export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptions) {
   const [status, setStatus] = useState<GraphStatus>("idle");
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  // Search is kept in a ref so changing it never triggers a re-fetch
+  const searchQueryRef = useRef("");
+  const [searchQuery, _setSearchQuery] = useState("");
+
+  const setSearchQuery = useCallback((q: string) => {
+    searchQueryRef.current = q;
+    _setSearchQuery(q);
+  }, []);
 
   const simRef = useRef<ReturnType<typeof createSimulation> | null>(null);
   const rendererRef = useRef<ReturnType<typeof createRenderer> | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  // Store latest selection in refs so the rAF loop always sees current values
+  // without needing to restart the loop on every state change
+  const selectedNodeRef = useRef<GraphNode | null>(null);
+  const hoveredNodeRef = useRef<GraphNode | null>(null);
+  const graphDataRef = useRef<GraphData | null>(null);
 
   const stopLoop = useCallback(() => {
     if (animFrameRef.current != null) {
@@ -34,40 +48,92 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
 
   const startRenderLoop = useCallback(
     (data: GraphData) => {
-      if (!canvasRef.current) return;
-
-      const canvas = canvasRef.current;
-      const renderer = rendererRef.current!;
-      const sim = simRef.current!;
-
-      const matchingIds =
-        searchQuery.trim().length > 0
-          ? new Set(
-              data.nodes
-                .filter((n) => n.label.toLowerCase().includes(searchQuery.toLowerCase()))
-                .map((n) => n.id)
-            )
-          : null;
-
-      function tick() {
-        const nodes = sim.getNodes();
-        renderer.updateQuadtree(nodes);
-        renderer.draw({
-          nodes,
-          edges: data.edges,
-          selectedNode,
-          hoveredNode,
-          matchingIds,
-        });
-        animFrameRef.current = requestAnimationFrame(tick);
-      }
+      const renderer = rendererRef.current;
+      const sim = simRef.current;
+      if (!renderer || !sim) return;
 
       stopLoop();
+
+      function tick() {
+        const currentSim = simRef.current;
+        const currentRenderer = rendererRef.current;
+        if (!currentSim || !currentRenderer) return;
+
+        const nodes = currentSim.getNodes();
+        currentRenderer.updateQuadtree(nodes);
+
+        const q = searchQueryRef.current.trim().toLowerCase();
+        const matchingIds =
+          q.length > 0
+            ? new Set(
+                data.nodes
+                  .filter(
+                    (n) =>
+                      n.label.toLowerCase().includes(q) ||
+                      n.path.toLowerCase().includes(q)
+                  )
+                  .map((n) => n.id)
+              )
+            : null;
+
+        currentRenderer.draw({
+          nodes,
+          edges: data.edges,
+          selectedNode: selectedNodeRef.current,
+          hoveredNode: hoveredNodeRef.current,
+          matchingIds,
+        });
+
+        // Stop rAF when simulation is stable — restart on interaction if needed
+        if (currentSim.getAlpha() > ALPHA_IDLE) {
+          animFrameRef.current = requestAnimationFrame(tick);
+        } else {
+          animFrameRef.current = null;
+        }
+      }
+
       animFrameRef.current = requestAnimationFrame(tick);
-      void canvas;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [searchQuery, selectedNode, hoveredNode, stopLoop]
+    [stopLoop]
+    // Intentionally omits selectedNode/hoveredNode/searchQuery —
+    // those are read from refs inside tick(), so this callback never
+    // needs to be recreated when selection or search changes.
+  );
+
+  // Restart rAF for a single frame whenever selection/search changes
+  // (sim is stable but we need one redraw)
+  const requestRedraw = useCallback(() => {
+    if (animFrameRef.current != null) return; // loop already running
+    const data = graphDataRef.current;
+    if (!data) return;
+    startRenderLoop(data);
+  }, [startRenderLoop]);
+
+  // Keep refs in sync
+  const wrappedSetSelectedNode = useCallback(
+    (node: GraphNode | null) => {
+      selectedNodeRef.current = node;
+      setSelectedNode(node);
+      requestRedraw();
+    },
+    [requestRedraw]
+  );
+
+  const wrappedSetHoveredNode = useCallback(
+    (node: GraphNode | null) => {
+      hoveredNodeRef.current = node;
+      setHoveredNode(node);
+      requestRedraw();
+    },
+    [requestRedraw]
+  );
+
+  const wrappedSetSearchQuery = useCallback(
+    (q: string) => {
+      setSearchQuery(q);
+      requestRedraw();
+    },
+    [setSearchQuery, requestRedraw]
   );
 
   const load = useCallback(async () => {
@@ -86,6 +152,7 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
 
       const { graph } = json as { graph: GraphData };
       setGraphData(graph);
+      graphDataRef.current = graph;
       setStatus("simulating");
 
       const canvas = canvasRef.current;
@@ -117,12 +184,6 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
     };
   }, [load, stopLoop]);
 
-  useEffect(() => {
-    if (graphData && simRef.current && rendererRef.current) {
-      startRenderLoop(graphData);
-    }
-  }, [searchQuery, selectedNode, hoveredNode, graphData, startRenderLoop]);
-
   const hitTest = useCallback((x: number, y: number) => {
     return rendererRef.current?.hitTest(x, y) ?? null;
   }, []);
@@ -132,13 +193,12 @@ export function useGraph({ owner, repo, canvasRef, getTransform }: UseGraphOptio
     graphData,
     error,
     selectedNode,
-    setSelectedNode,
+    setSelectedNode: wrappedSetSelectedNode,
     hoveredNode,
-    setHoveredNode,
+    setHoveredNode: wrappedSetHoveredNode,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: wrappedSetSearchQuery,
     hitTest,
     reload: load,
   };
 }
-

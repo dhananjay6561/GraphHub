@@ -9,6 +9,7 @@ export interface SimulationState {
   reheat: () => void;
   updateNodes: (nodes: GraphNode[]) => void;
   getNodes: () => GraphNode[];
+  getAlpha: () => number;
   on: (event: "tick", cb: () => void) => void;
 }
 
@@ -113,6 +114,7 @@ export function createSimulation(
       });
     },
     getNodes: () => simNodes as unknown as GraphNode[],
+    getAlpha: () => simulation.alpha(),
     on: (_event, cb) => {
       tickCb = cb;
     },
