@@ -3,16 +3,23 @@
 import * as d3 from "d3";
 import type { GraphNode, GraphEdge } from "@/types";
 
-const COLORS = {
-  folder:   "#7c7c8a",
-  file:     "#8b9dc4",
-  function: "#8aab96",
-  class:    "#c4a96e",
-  edge:     "#2e2e38",
-  label:    "#a09f9a",
-  selected: "#f0efe9",
-  dimOpacity: 0.15,
-};
+function cssVar(name: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+function themeColors() {
+  return {
+    folder:   cssVar("--node-folder",   "#7c7c8a"),
+    file:     cssVar("--node-file",     "#8b9dc4"),
+    function: cssVar("--node-function", "#8aab96"),
+    class:    cssVar("--node-class",    "#c4a96e"),
+    edge:     cssVar("--edge-default",  "#2e2e38"),
+    label:    cssVar("--text-secondary","#a09f9a"),
+    selected: cssVar("--text-primary",  "#f0efe9"),
+    dimOpacity: 0.15,
+  };
+}
 
 export interface RenderState {
   nodes: GraphNode[];
@@ -64,6 +71,7 @@ export function createRenderer(
 
   function draw(state: RenderState) {
     const { nodes, edges, selectedNode, hoveredNode, matchingIds, visibleTypes, visibleEdges } = state;
+    const COLORS = themeColors();
     const t = getTransform();
     const k = t.k;
 
