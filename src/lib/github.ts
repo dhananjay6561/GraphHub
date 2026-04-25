@@ -56,7 +56,9 @@ async function ghFetch(url: string): Promise<Response> {
 export async function getLatestSHA(owner: string, repo: string): Promise<string> {
   const res = await ghFetch(`${BASE}/repos/${owner}/${repo}/commits/HEAD`);
   const data = await res.json();
-  return data.sha as string;
+  const sha = typeof data?.sha === "string" ? data.sha : null;
+  if (!sha) throw new GithubError("Could not resolve HEAD sha", "unknown");
+  return sha;
 }
 
 export async function getRepoMeta(owner: string, repo: string): Promise<RepoMeta> {
@@ -65,8 +67,10 @@ export async function getRepoMeta(owner: string, repo: string): Promise<RepoMeta
     ghFetch(`${BASE}/repos/${owner}/${repo}/commits/HEAD`),
   ]);
   const [meta, commit] = await Promise.all([metaRes.json(), shaRes.json()]);
+  const sha = typeof commit?.sha === "string" ? commit.sha : null;
+  if (!sha) throw new GithubError("Could not resolve HEAD sha", "unknown");
   return {
-    sha: commit.sha as string,
+    sha,
     defaultBranch: meta.default_branch as string,
     stars: meta.stargazers_count as number,
     language: meta.language as string | null,
@@ -82,9 +86,17 @@ export async function getFileTree(
     `${BASE}/repos/${owner}/${repo}/git/trees/${sha}?recursive=1`
   );
   const data = await res.json();
+  if (!Array.isArray(data?.tree)) {
+    // truncated flag means tree exceeded GitHub's 100k-entry limit — partial result
+    if (data?.truncated) {
+      console.warn(`[graphhub] tree truncated for ${owner}/${repo}`);
+    } else {
+      throw new GithubError("Unexpected tree response from GitHub", "unknown");
+    }
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data.tree as any[])
-    .filter((item) => item.type === "blob")
+  return ((data.tree ?? []) as any[])
+    .filter((item) => item?.type === "blob")
     .map((item) => ({ path: item.path as string, size: (item.size ?? 0) as number }));
 }
 
@@ -99,7 +111,11 @@ export async function getFileContent(
     `${BASE}/repos/${owner}/${repo}/contents/${filePath}${ref}`
   );
   const data = await res.json();
-  const raw = Buffer.from(data.content as string, "base64").toString("utf-8");
+  // GitHub returns null content + download_url for files >1MB
+  if (!data?.content || typeof data.content !== "string") {
+    throw new GithubError(`File too large or binary: ${filePath}`, "unknown");
+  }
+  const raw = Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf-8");
   return { content: raw, language: detectLanguage(filePath) ?? "unknown" };
 }
 
