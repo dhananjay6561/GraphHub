@@ -14,11 +14,13 @@ interface UseGraphOptions {
   onStatusChange?: (status: GraphStatus) => void;
   onGraphReady?: (data: GraphData) => void;
   onError?: (err: ApiError) => void;
+  visibleTypes?: Set<string>;
+  visibleEdges?: Set<string>;
 }
 
 const ALPHA_IDLE = 0.001;
 
-export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange, onGraphReady, onError }: UseGraphOptions) {
+export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange, onGraphReady, onError, visibleTypes, visibleEdges }: UseGraphOptions) {
   const [status, setStatus] = useState<GraphStatus>("idle");
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -38,6 +40,8 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
   const selectedNodeRef = useRef<GraphNode | null>(null);
   const hoveredNodeRef = useRef<GraphNode | null>(null);
   const graphDataRef = useRef<GraphData | null>(null);
+  const visibleTypesRef = useRef<Set<string> | null>(visibleTypes ?? null);
+  const visibleEdgesRef = useRef<Set<string> | null>(visibleEdges ?? null);
 
   const updateStatus = useCallback(
     (s: GraphStatus) => {
@@ -68,7 +72,6 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
         if (!currentSim || !currentRenderer) return;
 
         const nodes = currentSim.getNodes();
-        currentRenderer.updateQuadtree(nodes);
 
         const q = searchQueryRef.current.trim().toLowerCase();
         const matchingIds =
@@ -84,12 +87,15 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
               )
             : null;
 
+        currentRenderer.updateQuadtree(nodes, visibleTypesRef.current);
         currentRenderer.draw({
           nodes,
           edges: data.edges,
           selectedNode: selectedNodeRef.current,
           hoveredNode: hoveredNodeRef.current,
           matchingIds,
+          visibleTypes: visibleTypesRef.current,
+          visibleEdges: visibleEdgesRef.current,
         });
 
         if (currentSim.getAlpha() > ALPHA_IDLE) {
@@ -187,6 +193,17 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
       simRef.current?.stop();
     };
   }, [load, stopLoop]);
+
+  // Sync visibility refs and redraw whenever the sets change
+  useEffect(() => {
+    visibleTypesRef.current = visibleTypes ?? null;
+    requestRedraw();
+  }, [visibleTypes, requestRedraw]);
+
+  useEffect(() => {
+    visibleEdgesRef.current = visibleEdges ?? null;
+    requestRedraw();
+  }, [visibleEdges, requestRedraw]);
 
   const hitTest = useCallback((x: number, y: number) => {
     return rendererRef.current?.hitTest(x, y) ?? null;

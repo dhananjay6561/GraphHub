@@ -90,6 +90,7 @@ export default function GraphPage({
               onError={setApiError}
               searchQuery={searchQuery}
               visibleTypes={visibleTypes}
+              visibleEdges={visibleEdges}
             />
           </ErrorBoundary>
 

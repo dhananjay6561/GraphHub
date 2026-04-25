@@ -26,11 +26,12 @@ interface Props {
   onError?: (err: ApiError) => void;
   searchQuery?: string;
   visibleTypes?: Set<NodeType>;
+  visibleEdges?: Set<string>;
 }
 
 export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(
   function GraphCanvas(
-    { owner, repo, onNodeSelect, onStatusChange, onGraphReady, onError, searchQuery },
+    { owner, repo, onNodeSelect, onStatusChange, onGraphReady, onError, searchQuery, visibleTypes, visibleEdges },
     ref
   ) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -54,6 +55,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(
         onStatusChange,
         onGraphReady,
         onError,
+        visibleTypes,
+        visibleEdges,
       });
 
     // Trigger a redraw after zoom/pan so canvas updates even when sim is settled
