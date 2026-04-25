@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { GraphCanvas } from "@/components/Graph/GraphCanvas";
 import { DetailPanel } from "@/components/Graph/DetailPanel";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { GraphNode } from "@/types";
 
 const NODE_COLORS: Record<string, string> = {
@@ -50,11 +51,13 @@ export default function GraphPage({
 
       {/* Canvas */}
       <main className="flex-1 relative">
-        <GraphCanvas
-          owner={owner}
-          repo={repo}
-          onNodeSelect={setSelectedNode}
-        />
+        <ErrorBoundary>
+          <GraphCanvas
+            owner={owner}
+            repo={repo}
+            onNodeSelect={setSelectedNode}
+          />
+        </ErrorBoundary>
       </main>
 
       {/* Detail panel */}
