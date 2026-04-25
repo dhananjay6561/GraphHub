@@ -39,7 +39,15 @@
   --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
 
-  --dot-color: rgba(46, 46, 56, 0.8);
+  --dot-color: rgba(46, 46, 56, 0.6);
+
+  /* Graph — slightly brighter on dark bg so they read against #0c0c0e */
+  --node-folder:   #9696a6;
+  --node-file:     #a2b8d8;
+  --node-function: #9ec4ae;
+  --node-class:    #d4bc82;
+  --node-external: #a08eb4;
+  --edge-default:  #48484e;
 }
 
 /* Accent + graph — same in both modes */
