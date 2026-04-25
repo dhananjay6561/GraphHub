@@ -11,6 +11,8 @@ export interface SimulationState {
   getNodes: () => GraphNode[];
   getAlpha: () => number;
   on: (event: "tick", cb: () => void) => void;
+  pinNode: (id: string, x: number, y: number) => void;
+  unpinNode: (id: string) => void;
 }
 
 interface Options {
@@ -123,5 +125,13 @@ export function createSimulation(
     getNodes: () => simNodes,
     getAlpha: () => simulation.alpha(),
     on: (_event, cb) => { tickCb = cb; },
+    pinNode: (id, x, y) => {
+      const n = nodeById.get(id);
+      if (n) { n.fx = x; n.fy = y; }
+    },
+    unpinNode: (id) => {
+      const n = nodeById.get(id);
+      if (n) { n.fx = null; n.fy = null; }
+    },
   };
 }
