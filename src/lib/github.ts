@@ -1,3 +1,4 @@
+import "server-only";
 import type { Language, RepoMeta, RawFile } from "@/types";
 import { detectLanguage } from "./utils";
 
