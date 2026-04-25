@@ -37,7 +37,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       const status = err.code === "not_found" ? 404 : err.code === "rate_limited" ? 429 : 502;
       return NextResponse.json(body, { status });
     }
-    const body: ApiError = { error: "internal", message: String(err) };
-    return NextResponse.json(body, { status: 500 });
+    console.error("[graphhub] /api/tree error", err);
+    return NextResponse.json({ error: "internal" } satisfies ApiError, { status: 500 });
   }
 }

@@ -61,6 +61,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       const status = err.code === "not_found" ? 404 : err.code === "rate_limited" ? 429 : 502;
       return NextResponse.json(body, { status });
     }
-    return NextResponse.json({ error: "internal", message: String(err) }, { status: 500 });
+    console.error("[graphhub] /api/files error", err);
+    return NextResponse.json({ error: "internal" } satisfies ApiError, { status: 500 });
   }
 }
