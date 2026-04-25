@@ -184,7 +184,7 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
       setError({ error: "internal", message: String(err) });
       updateStatus("error");
     }
-  }, [owner, repo, canvasRef, getTransform, startRenderLoop, updateStatus, onGraphReady]);
+  }, [owner, repo, canvasRef, getTransform, startRenderLoop, updateStatus, onGraphReady, onError]);
 
   useEffect(() => {
     load();
