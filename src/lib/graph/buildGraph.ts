@@ -77,6 +77,9 @@ export function buildGraph(parsedFiles: ParsedFile[]): GraphData {
     }
   }
 
+  // Build a fast id→node map for O(1) connection increments
+  const nodeById = new Map<string, GraphNode>(nodes.map((n) => [n.id, n]));
+
   // ── Import edges ──────────────────────────────────────────────────────────
 
   for (const file of parsedFiles) {
@@ -101,17 +104,18 @@ export function buildGraph(parsedFiles: ParsedFile[]): GraphData {
             connections: 0,
           };
           externalNodes.set(pkg, extNode);
+          nodeById.set(extId, extNode);
         }
 
         const extId = `external:${pkg}`;
         addEdge(edges, edgeSet, sourceId, extId, "import", true);
-        incrementConnections(nodes, sourceId);
+        bump(nodeById, sourceId);
       } else if (imp.resolved) {
         const targetId = fileIdMap.get(imp.resolved);
         if (targetId) {
           addEdge(edges, edgeSet, sourceId, targetId, "import");
-          incrementConnections(nodes, sourceId);
-          incrementConnections(nodes, targetId);
+          bump(nodeById, sourceId);
+          bump(nodeById, targetId);
         }
       }
     }
@@ -153,7 +157,7 @@ function addEdge(
   edges.push({ source, target, type, ...(external ? { external } : {}) });
 }
 
-function incrementConnections(nodes: GraphNode[], id: string) {
-  const node = nodes.find((n) => n.id === id);
+function bump(nodeById: Map<string, GraphNode>, id: string) {
+  const node = nodeById.get(id);
   if (node) node.connections++;
 }
