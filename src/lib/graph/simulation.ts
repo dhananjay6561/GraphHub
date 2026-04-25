@@ -24,39 +24,54 @@ export function createSimulation(
   clusters: Record<string, string[]>,
   { width, height }: Options
 ): SimulationState {
-  // d3 mutates nodes in-place with x/y/vx/vy — spread to avoid mutating caller's array
   type SimNode = GraphNode & d3.SimulationNodeDatum;
   const simNodes: SimNode[] = nodes.map((n) => ({ ...n }));
-
   const nodeById = new Map<string, SimNode>(simNodes.map((n) => [n.id, n]));
 
-  // cluster centroids (initialised lazily per tick)
   const clusterCentroids = new Map<string, { x: number; y: number }>();
 
   const simEdges = edges
     .filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
     .map((e) => ({ ...e }));
 
+  // Per-type charge: folders push hard, functions/classes barely repel each other
+  const charge = d3.forceManyBody<SimNode>().strength((d) => {
+    if (d.type === "folder") return -600;
+    if (d.type === "file") return -250;
+    return -60;
+  });
+
+  // Per-edge link distance: hierarchy gets more breathing room
+  const link = d3
+    .forceLink<SimNode, (typeof simEdges)[number]>(simEdges)
+    .id((d) => d.id)
+    .distance((e) => {
+      const t = (e as { type?: string }).type;
+      if (t === "contains") return 50;
+      if (t === "import") return 90;
+      return 70;
+    })
+    .strength((e) => {
+      const t = (e as { type?: string }).type;
+      return t === "contains" ? 0.8 : 0.4;
+    });
+
   const simulation = d3
     .forceSimulation<SimNode>(simNodes)
-    .force(
-      "link",
-      d3
-        .forceLink<SimNode, (typeof simEdges)[number]>(simEdges)
-        .id((d) => d.id)
-        .distance(60)
-    )
-    .force("charge", d3.forceManyBody().strength(-120))
-    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("link", link)
+    .force("charge", charge)
+    .force("center", d3.forceCenter(width / 2, height / 2).strength(0.04))
     .force(
       "collide",
-      d3.forceCollide<SimNode>().radius((d) =>
-        d.type === "folder" ? 60 : d.type === "file" ? 20 : 10
-      )
+      d3.forceCollide<SimNode>().radius((d) => {
+        if (d.type === "folder") return 80;
+        if (d.type === "file") return 16;
+        return 8;
+      }).strength(0.8)
     )
     .force("cluster", clusterForce())
-    .alphaDecay(0.02)
-    .velocityDecay(0.4);
+    .alphaDecay(0.025)
+    .velocityDecay(0.55);
 
   function clusterForce() {
     return function () {
@@ -79,13 +94,12 @@ export function createSimulation(
         c.y /= count;
       });
 
-      const strength = 0.05;
       for (const n of simNodes) {
         if (n.type !== "file") continue;
         const centroid = clusterCentroids.get(n.cluster);
         if (!centroid) continue;
-        n.vx = (n.vx ?? 0) + (centroid.x - (n.x ?? 0)) * strength;
-        n.vy = (n.vy ?? 0) + (centroid.y - (n.y ?? 0)) * strength;
+        n.vx = (n.vx ?? 0) + (centroid.x - (n.x ?? 0)) * 0.08;
+        n.vy = (n.vy ?? 0) + (centroid.y - (n.y ?? 0)) * 0.08;
       }
     };
   }
@@ -109,8 +123,6 @@ export function createSimulation(
     },
     getNodes: () => simNodes,
     getAlpha: () => simulation.alpha(),
-    on: (_event, cb) => {
-      tickCb = cb;
-    },
+    on: (_event, cb) => { tickCb = cb; },
   };
 }
