@@ -71,16 +71,18 @@
 
   html {
     height: 100%;
-    transition: background-color 200ms ease, color 200ms ease;
+    background-color: var(--bg-primary);
   }
 
   body {
     height: 100%;
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
     font-size: 15px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
   :focus-visible {
