@@ -24,14 +24,11 @@ export function createSimulation(
   clusters: Record<string, string[]>,
   { width, height }: Options
 ): SimulationState {
-  // d3 mutates nodes in-place, copy to avoid modifying shared state
-  const simNodes = nodes.map((n) => ({ ...n })) as d3.SimulationNodeDatum &
-    GraphNode[];
+  // d3 mutates nodes in-place with x/y/vx/vy — spread to avoid mutating caller's array
+  type SimNode = GraphNode & d3.SimulationNodeDatum;
+  const simNodes: SimNode[] = nodes.map((n) => ({ ...n }));
 
-  const nodeById = new Map<string, (typeof simNodes)[number]>();
-  (simNodes as unknown as (GraphNode & d3.SimulationNodeDatum)[]).forEach((n) =>
-    nodeById.set(n.id, n as unknown as (typeof simNodes)[number])
-  );
+  const nodeById = new Map<string, SimNode>(simNodes.map((n) => [n.id, n]));
 
   // cluster centroids (initialised lazily per tick)
   const clusterCentroids = new Map<string, { x: number; y: number }>();
@@ -41,22 +38,21 @@ export function createSimulation(
     .map((e) => ({ ...e }));
 
   const simulation = d3
-    .forceSimulation(simNodes as unknown as d3.SimulationNodeDatum[])
+    .forceSimulation<SimNode>(simNodes)
     .force(
       "link",
       d3
-        .forceLink(simEdges)
-        .id((d) => (d as GraphNode).id)
+        .forceLink<SimNode, (typeof simEdges)[number]>(simEdges)
+        .id((d) => d.id)
         .distance(60)
     )
     .force("charge", d3.forceManyBody().strength(-120))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force(
       "collide",
-      d3.forceCollide().radius((d) => {
-        const node = d as unknown as GraphNode;
-        return node.type === "folder" ? 60 : node.type === "file" ? 20 : 10;
-      })
+      d3.forceCollide<SimNode>().radius((d) =>
+        d.type === "folder" ? 60 : d.type === "file" ? 20 : 10
+      )
     )
     .force("cluster", clusterForce())
     .alphaDecay(0.02)
@@ -64,11 +60,10 @@ export function createSimulation(
 
   function clusterForce() {
     return function () {
-      // update centroids
       clusterCentroids.clear();
       const counts = new Map<string, number>();
 
-      for (const n of simNodes as unknown as (GraphNode & d3.SimulationNodeDatum)[]) {
+      for (const n of simNodes) {
         if (n.type !== "file") continue;
         const c = n.cluster;
         const cx = clusterCentroids.get(c) ?? { x: 0, y: 0 };
@@ -84,9 +79,8 @@ export function createSimulation(
         c.y /= count;
       });
 
-      // pull each file toward its cluster centroid
       const strength = 0.05;
-      for (const n of simNodes as unknown as (GraphNode & d3.SimulationNodeDatum)[]) {
+      for (const n of simNodes) {
         if (n.type !== "file") continue;
         const centroid = clusterCentroids.get(n.cluster);
         if (!centroid) continue;
@@ -113,7 +107,7 @@ export function createSimulation(
         if (n) Object.assign(n, u);
       });
     },
-    getNodes: () => simNodes as unknown as GraphNode[],
+    getNodes: () => simNodes,
     getAlpha: () => simulation.alpha(),
     on: (_event, cb) => {
       tickCb = cb;

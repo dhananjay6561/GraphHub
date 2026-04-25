@@ -1,5 +1,5 @@
 import "server-only";
-import { getLatestSHA, getFileTree, getFileContentsBatch } from "./github";
+import { getFileTree, getFileContentsBatch } from "./github";
 import { cache, treeKey, fileKey, parsedKey, TTL_TREE, TTL_FILE, TTL_PARSED } from "./cache";
 import { shouldIncludeFile } from "./utils";
 import { parseAll } from "./parser";
