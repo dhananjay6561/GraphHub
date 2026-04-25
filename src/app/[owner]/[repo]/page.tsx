@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { use } from "react";
 import { GraphCanvas } from "@/components/Graph/GraphCanvas";
 import { DetailPanel } from "@/components/Graph/DetailPanel";
 import type { GraphNode } from "@/types";
@@ -16,9 +15,9 @@ const NODE_COLORS: Record<string, string> = {
 export default function GraphPage({
   params,
 }: {
-  params: Promise<{ owner: string; repo: string }>;
+  params: { owner: string; repo: string };
 }) {
-  const { owner, repo } = use(params);
+  const { owner, repo } = params;
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 
   return (
