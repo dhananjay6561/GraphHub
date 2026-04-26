@@ -9,14 +9,16 @@ function cssVar(name: string, fallback: string): string {
 }
 
 function themeColors() {
+  const edgeOpacity = parseFloat(cssVar("--edge-opacity", "0.25")) || 0.25;
   return {
     folder:   cssVar("--node-folder",   "#7c7c8a"),
     file:     cssVar("--node-file",     "#8b9dc4"),
     function: cssVar("--node-function", "#8aab96"),
     class:    cssVar("--node-class",    "#c4a96e"),
-    edge:     cssVar("--edge-default",  "#2e2e38"),
+    edge:     cssVar("--edge-default",  "#a8a7a2"),
     label:    cssVar("--text-secondary","#a09f9a"),
     selected: cssVar("--text-primary",  "#f0efe9"),
+    edgeOpacity,
     dimOpacity: 0.15,
   };
 }
@@ -109,14 +111,15 @@ export function createRenderer(
       if (!src || !tgt || src.x == null || src.y == null || tgt.x == null || tgt.y == null) continue;
       if (visibleTypes && (!visibleTypes.has(src.type) || !visibleTypes.has(tgt.type))) continue;
 
-      // hide less important edges when zoomed out
+      // hide contains edges when zoomed out — they're the noisiest wires
+      if (k < 0.6 && edge.type === "contains") continue;
       if (k < 0.3 && edge.type !== "import") continue;
 
       const faded =
         (focusMode && !neighborIds.has(edge.source) && !neighborIds.has(edge.target)) ||
         (searchMode && matchingIds && !matchingIds.has(edge.source) && !matchingIds.has(edge.target));
 
-      ctx.globalAlpha = faded ? COLORS.dimOpacity * 0.5 : 0.35;
+      ctx.globalAlpha = faded ? COLORS.edgeOpacity * 0.25 : COLORS.edgeOpacity;
       ctx.strokeStyle = COLORS.edge;
       ctx.lineWidth = 1 / k;
       ctx.beginPath();

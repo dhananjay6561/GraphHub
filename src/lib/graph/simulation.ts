@@ -36,11 +36,11 @@ export function createSimulation(
     .filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
     .map((e) => ({ ...e }));
 
-  // Per-type charge: folders push hard, functions/classes barely repel each other
+  // Per-type charge: push nodes far enough apart that they don't overlap
   const charge = d3.forceManyBody<SimNode>().strength((d) => {
-    if (d.type === "folder") return -1200;
-    if (d.type === "file")   return -500;
-    return -200;
+    if (d.type === "folder") return -1400;
+    if (d.type === "file")   return -800;
+    return -500;
   });
 
   const link = d3
@@ -48,13 +48,13 @@ export function createSimulation(
     .id((d) => d.id)
     .distance((e) => {
       const t = (e as { type?: string }).type;
-      if (t === "contains") return 80;
-      if (t === "import")   return 140;
-      return 100;
+      if (t === "contains") return 120;
+      if (t === "import")   return 180;
+      return 140;
     })
     .strength((e) => {
       const t = (e as { type?: string }).type;
-      return t === "contains" ? 0.6 : 0.3;
+      return t === "contains" ? 0.45 : 0.2;
     });
 
   const simulation = d3
@@ -65,10 +65,10 @@ export function createSimulation(
     .force(
       "collide",
       d3.forceCollide<SimNode>().radius((d) => {
-        if (d.type === "folder")   return 120;
-        if (d.type === "file")     return 28;
-        return 18;
-      }).strength(0.9)
+        if (d.type === "folder")   return 130;
+        if (d.type === "file")     return 42;
+        return 32;
+      }).strength(1)
     )
     .force("cluster", clusterForce())
     .alphaDecay(0.022)
