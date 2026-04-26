@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UrlInput } from "@/components/UrlInput";
@@ -105,6 +106,33 @@ export default function Home() {
             style={{ animationDelay: "320ms", marginTop: "64px" }}
           >
             <FeatureHints />
+          </div>
+
+          {/* Recruiter / Engineer CTA */}
+          <div
+            className="animate-fadeup w-full"
+            style={{ animationDelay: "420ms", marginTop: "40px" }}
+          >
+            <Link
+              href="/showcase"
+              className="group flex items-center justify-between w-full rounded-xl border px-5 py-4 transition-all duration-150 hover:bg-[var(--bg-secondary)] hover:border-[var(--border-strong)]"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <div className="text-left">
+                <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+                  Recruiter or engineer? This one&apos;s for you.
+                </p>
+                <p className="text-[12px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  Architecture, design decisions, tradeoffs, and everything behind the build
+                </p>
+              </div>
+              <ArrowUpRight
+                size={16}
+                aria-hidden="true"
+                className="shrink-0 ml-4 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                style={{ color: "var(--accent)" }}
+              />
+            </Link>
           </div>
         </div>
       </main>
