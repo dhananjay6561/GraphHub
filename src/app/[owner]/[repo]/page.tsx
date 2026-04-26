@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { saveRecent } from "@/lib/recent";
 import { GraphCanvas, type GraphCanvasHandle } from "@/components/Graph/GraphCanvas";
 import { DetailPanel } from "@/components/Graph/DetailPanel";
 import { Sidebar } from "@/components/Graph/Sidebar";
@@ -32,8 +33,39 @@ export default function GraphPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleTypes, setVisibleTypes] = useState<Set<NodeType>>(DEFAULT_NODE_TYPES);
   const [visibleEdges, setVisibleEdges] = useState<Set<EdgeType>>(DEFAULT_EDGE_TYPES);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const canvasRef = useRef<GraphCanvasHandle>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Save to recent once the graph data arrives (stable — doesn't affect useGraph deps)
+  useEffect(() => {
+    if (graphData) saveRecent(`${owner}/${repo}`);
+  }, [graphData, owner, repo]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      const isTyping = tag === "INPUT" || tag === "TEXTAREA";
+
+      // Cmd/Ctrl+K or / → focus search
+      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (!isTyping && e.key === "/")) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      // Escape → clear selection (only when not in an input)
+      if (e.key === "Escape" && !isTyping) {
+        setSelectedNode(null);
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const nodeById = useMemo(
     () => new Map((graphData?.nodes ?? []).map((n) => [n.id, n])),
@@ -70,9 +102,20 @@ export default function GraphPage({
         graphData={graphData}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        searchRef={searchInputRef}
+        onMenuClick={() => setSidebarOpen(true)}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile backdrop */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 md:hidden"
+            style={{ background: "rgba(0,0,0,0.4)" }}
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         <Sidebar
           graphData={graphData}
           visibleTypes={visibleTypes}
@@ -82,9 +125,11 @@ export default function GraphPage({
           onZoomIn={() => canvasRef.current?.zoomIn()}
           onZoomOut={() => canvasRef.current?.zoomOut()}
           onResetZoom={() => canvasRef.current?.resetZoom()}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
         />
 
-        <main className="flex-1 overflow-hidden relative">
+        <main id="main" className="flex-1 overflow-hidden relative">
           <ErrorBoundary>
             <GraphCanvas
               ref={canvasRef}

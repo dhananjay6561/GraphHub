@@ -15,15 +15,29 @@ export function DetailPanel({ node, edges, nodeById, onClose, onNodeSelect }: Pr
 
   return (
     <aside
-      className="shrink-0 border-l overflow-hidden transition-[width] duration-200"
+      className={[
+        "overflow-hidden flex flex-col",
+        // Mobile: fixed bottom sheet
+        "fixed bottom-0 left-0 right-0 z-30 max-h-[65vh] rounded-t-xl border-t",
+        "transition-transform duration-200 ease-out",
+        node ? "translate-y-0" : "translate-y-full",
+        // Desktop: side panel in flex row
+        "md:relative md:inset-auto md:z-auto md:rounded-none md:border-t-0 md:border-l",
+        "md:transition-[width] md:translate-y-0",
+        node ? "md:w-[320px]" : "md:w-0",
+      ].join(" ")}
       style={{
-        width: node ? "320px" : "0px",
         background: "var(--bg-secondary)",
         borderColor: "var(--border)",
       }}
     >
       {node && (
-        <div className="w-[320px] h-full overflow-y-auto flex flex-col">
+        <div className="w-full md:w-[320px] h-full overflow-y-auto flex flex-col">
+          {/* Mobile drag handle */}
+          <div className="md:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+            <div className="w-8 h-1 rounded-full" style={{ background: "var(--border-strong)" }} />
+          </div>
+
           {/* Header */}
           <div
             className="p-4 flex items-start justify-between gap-3 border-b shrink-0"
@@ -45,9 +59,9 @@ export function DetailPanel({ node, edges, nodeById, onClose, onNodeSelect }: Pr
             </div>
             <button
               onClick={onClose}
-              className="shrink-0 flex items-center justify-center w-6 h-6 rounded transition-colors duration-150 hover:bg-[var(--bg-tertiary)]"
+              className="shrink-0 flex items-center justify-center w-8 h-8 rounded transition-colors duration-150 hover:bg-[var(--bg-tertiary)] cursor-pointer"
               style={{ color: "var(--text-tertiary)" }}
-              aria-label="Close"
+              aria-label="Close detail panel"
             >
               <X size={14} />
             </button>
@@ -80,7 +94,7 @@ export function DetailPanel({ node, edges, nodeById, onClose, onNodeSelect }: Pr
                     <button
                       key={n.id}
                       onClick={() => onNodeSelect(n)}
-                      className="flex items-center gap-2 text-left px-2 py-1 rounded-md transition-colors duration-150 hover:bg-[var(--bg-tertiary)] w-full"
+                      className="flex items-center gap-2 text-left px-2 py-1.5 rounded-md transition-colors duration-150 hover:bg-[var(--bg-tertiary)] w-full cursor-pointer"
                     >
                       <span
                         className="w-1.5 h-1.5 rounded-full shrink-0"
