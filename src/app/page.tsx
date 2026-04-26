@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UrlInput } from "@/components/UrlInput";
@@ -12,13 +13,8 @@ export default function Home() {
     >
       {/* Header */}
       <header
-        className="sticky top-0 z-10 flex items-center justify-between border-b"
-        style={{
-          background: "var(--bg-primary)",
-          borderColor: "var(--border)",
-          padding: "0 32px",
-          height: "56px",
-        }}
+        className="sticky top-0 z-10 flex items-center justify-between border-b px-4 sm:px-8 h-14"
+        style={{ background: "var(--bg-primary)", borderColor: "var(--border)" }}
       >
         <Logo />
         <div className="flex items-center gap-1">
@@ -41,13 +37,13 @@ export default function Home() {
 
       {/* Main */}
       <main
-        className="flex-1 flex items-start justify-center px-4"
-        style={{ paddingTop: "96px" }}
+        id="main"
+        className="flex-1 flex items-start justify-center px-4 pt-12 sm:pt-20 md:pt-24"
       >
         <div className="w-full max-w-[680px] flex flex-col items-center text-center">
           {/* Eyebrow badge */}
           <div
-            className="animate-fadeup inline-flex items-center rounded-full text-[11px] border"
+            className="animate-fadeup inline-flex items-center rounded-full text-[12px] border"
             style={{
               animationDelay: "0ms",
               background: "var(--accent-subtle)",
@@ -61,14 +57,12 @@ export default function Home() {
 
           {/* Headline */}
           <h1
-            className="animate-fadeup font-medium text-center"
+            className="animate-fadeup font-medium text-center text-[26px] sm:text-[34px] md:text-[40px] mt-5"
             style={{
               animationDelay: "60ms",
-              fontSize: "40px",
               lineHeight: "1.2",
               color: "var(--text-primary)",
               maxWidth: "560px",
-              marginTop: "20px",
             }}
           >
             Visualize any GitHub repo as an interactive knowledge graph
@@ -76,14 +70,13 @@ export default function Home() {
 
           {/* Subheadline */}
           <p
-            className="animate-fadeup"
+            className="animate-fadeup mt-4"
             style={{
               animationDelay: "120ms",
               fontSize: "15px",
               lineHeight: "1.7",
               color: "var(--text-secondary)",
               maxWidth: "480px",
-              marginTop: "16px",
             }}
           >
             Replace github.com with graphhub.dev in any repo URL and explore its
@@ -118,20 +111,21 @@ export default function Home() {
 
       {/* Footer */}
       <footer
-        className="flex items-center justify-between border-t text-[12px]"
-        style={{
-          borderColor: "var(--border)",
-          color: "var(--text-tertiary)",
-          padding: "24px 32px",
-        }}
+        className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t text-[12px] px-4 sm:px-8 py-5"
+        style={{ borderColor: "var(--border)", color: "var(--text-tertiary)" }}
       >
         <div className="flex items-center gap-2">
-          <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>
-            GraphHub
-          </span>
-          <span>© 2025</span>
+          <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>GraphHub</span>
+          <span>© {new Date().getFullYear()}</span>
         </div>
-        <span>Built for developers</span>
+        <div className="flex items-center gap-4">
+          <Link href="/branding" className="transition-colors duration-150 hover:text-[var(--text-secondary)]">
+            Brand
+          </Link>
+          <span>
+            Made with <span style={{ color: "var(--accent)" }}>♥</span> by Dhananjay
+          </span>
+        </div>
       </footer>
     </div>
   );

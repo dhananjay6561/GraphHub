@@ -8,22 +8,22 @@ const HINTS = [
 
 export function FeatureHints() {
   return (
-    <div className="flex items-start w-full">
+    <div className="flex flex-col sm:flex-row w-full" style={{ borderColor: "var(--border)" }}>
       {HINTS.map(({ Icon, label, desc }, i) => (
         <div
           key={label}
-          className="flex flex-1 flex-col items-center gap-1.5 px-6 py-2 text-center"
-          style={{
-            borderLeft: i > 0 ? "1px solid var(--border)" : undefined,
-          }}
+          className={[
+            "flex sm:flex-col flex-1 items-center gap-3 sm:gap-1.5",
+            "px-4 sm:px-6 py-3 sm:py-2 text-left sm:text-center",
+            i > 0 ? "border-t sm:border-t-0 sm:border-l" : "",
+          ].join(" ")}
+          style={{ borderColor: "var(--border)" }}
         >
-          <Icon size={16} style={{ color: "var(--text-tertiary)" }} />
-          <p className="text-[13px]" style={{ color: "var(--text-secondary)" }}>
-            {label}
-          </p>
-          <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-            {desc}
-          </p>
+          <Icon size={16} aria-hidden="true" className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+          <div className="sm:text-center">
+            <p className="text-[13px]" style={{ color: "var(--text-secondary)" }}>{label}</p>
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{desc}</p>
+          </div>
         </div>
       ))}
     </div>
