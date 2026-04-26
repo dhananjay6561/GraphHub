@@ -22,7 +22,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const key = graphKey(owner, repo, sha);
 
     const cached = cache.get<GraphResponse>(key);
-    if (cached) return NextResponse.json(cached);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+      });
+    }
 
     const flightKey = `${owner}/${repo}@${sha}`;
     let promise = inFlight.get(flightKey);
@@ -35,7 +39,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     }
 
     const response = await promise;
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+    });
   } catch (err) {
     if (err instanceof GithubError) {
       const body: ApiError = { error: err.code, ...(err.retryAfter ? { retryAfter: err.retryAfter } : {}) };

@@ -6,6 +6,37 @@ import { createSimulation } from "@/lib/graph/simulation";
 import { createRenderer } from "@/lib/graph/renderer";
 import type * as d3 from "d3";
 
+// ─── Client-side graph cache ─────────────────────────────────────────────────
+
+const CLIENT_TTL = 30 * 60 * 1000; // 30 min
+
+function clientCacheKey(owner: string, repo: string) {
+  return `graphhub:graph:${owner}/${repo}`;
+}
+
+function readClientCache(owner: string, repo: string): GraphData | null {
+  try {
+    const raw = localStorage.getItem(clientCacheKey(owner, repo));
+    if (!raw) return null;
+    const { graph, cachedAt } = JSON.parse(raw) as { graph: GraphData; cachedAt: number };
+    if (Date.now() - cachedAt > CLIENT_TTL) return null;
+    return graph;
+  } catch {
+    return null;
+  }
+}
+
+function writeClientCache(owner: string, repo: string, graph: GraphData) {
+  try {
+    localStorage.setItem(
+      clientCacheKey(owner, repo),
+      JSON.stringify({ graph, cachedAt: Date.now() })
+    );
+  } catch {
+    // quota exceeded — fine to skip
+  }
+}
+
 interface UseGraphOptions {
   owner: string;
   repo: string;
@@ -143,28 +174,8 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
     [setSearchQuery, requestRedraw]
   );
 
-  const load = useCallback(async () => {
-    updateStatus("loading");
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/graph/${owner}/${repo}`);
-      const json = await res.json();
-
-      if (!res.ok) {
-        const apiErr = json as ApiError;
-        setError(apiErr);
-        onError?.(apiErr);
-        updateStatus("error");
-        return;
-      }
-
-      const { graph } = json as { graph: GraphData };
-      setGraphData(graph);
-      graphDataRef.current = graph;
-      onGraphReady?.(graph);
-      updateStatus("simulating");
-
+  const startGraph = useCallback(
+    (graph: GraphData) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
@@ -180,11 +191,52 @@ export function useGraph({ owner, repo, canvasRef, getTransform, onStatusChange,
       sim.start();
       startRenderLoop(graph);
       updateStatus("ready");
+    },
+    [canvasRef, getTransform, startRenderLoop, updateStatus]
+  );
+
+  const load = useCallback(async () => {
+    setError(null);
+
+    // ── Client cache hit — render immediately, skip network ───────────────────
+    const cached = readClientCache(owner, repo);
+    if (cached) {
+      setGraphData(cached);
+      graphDataRef.current = cached;
+      onGraphReady?.(cached);
+      updateStatus("simulating");
+      startGraph(cached);
+      return;
+    }
+
+    // ── Cache miss — fetch from server ────────────────────────────────────────
+    updateStatus("loading");
+
+    try {
+      const res = await fetch(`/api/graph/${owner}/${repo}`);
+      const json = await res.json();
+
+      if (!res.ok) {
+        const apiErr = json as ApiError;
+        setError(apiErr);
+        onError?.(apiErr);
+        updateStatus("error");
+        return;
+      }
+
+      const { graph } = json as { graph: GraphData };
+      writeClientCache(owner, repo, graph);
+
+      setGraphData(graph);
+      graphDataRef.current = graph;
+      onGraphReady?.(graph);
+      updateStatus("simulating");
+      startGraph(graph);
     } catch (err) {
       setError({ error: "internal", message: String(err) });
       updateStatus("error");
     }
-  }, [owner, repo, canvasRef, getTransform, startRenderLoop, updateStatus, onGraphReady, onError]);
+  }, [owner, repo, canvasRef, getTransform, startRenderLoop, updateStatus, onGraphReady, onError, startGraph]);
 
   useEffect(() => {
     load();
