@@ -1,0 +1,33 @@
+# GraphHub
+
+> Visualize any GitHub repository as an interactive force-directed knowledge graph. Replace github.com with graphhub.dev in any repo URL — zero setup, no tokens required.
+
+GraphHub is an open-source developer tool that converts GitHub repositories into navigable knowledge graphs. It parses JavaScript, TypeScript, Python, and Go source files using AST-based extraction to identify functions, classes, and import relationships, then renders them as an interactive canvas graph using D3 force simulation.
+
+## How it works
+
+1. Paste any GitHub repository URL (or replace github.com → graphhub.dev in your browser)
+2. GraphHub fetches the repository tree via the GitHub public API
+3. Source files are parsed for imports, function definitions, and class definitions
+4. A force-directed graph is built: folders, files, functions, and classes become nodes; import and containment relationships become edges
+5. The graph renders on an HTML canvas with D3 physics simulation
+
+## Pages
+
+- [Home](https://graphhub.dev): URL input, example repos, interactive graph entry point
+- [Engineering Case Study](https://graphhub.dev/showcase): Full technical breakdown — architecture, canvas rendering rationale, three-layer caching strategy, force simulation physics, and key engineering tradeoffs
+- [Brand Guidelines](https://graphhub.dev/branding): Visual identity, color system, typography, graph node vocabulary, and voice guidelines
+
+## Technical details
+
+- Frontend: Next.js 14 App Router, HTML Canvas, D3 force simulation
+- Parsing: AST-based for JS/TS/Python/Go — extracts imports, functions, classes, exports
+- Caching: Three layers — client localStorage (30 min), HTTP Cache-Control (1 hr / SWR 24 hr), server node-cache (24 hr, SHA-keyed)
+- In-flight deduplication: concurrent cold-cache requests share one Promise
+- Node types: folder, file, function, class
+- Edge types: import (cross-file), contains (parent-child)
+
+## Source
+
+- Repository: https://github.com/dhananjay6561/GraphHub
+- Built by: Dhananjay Aggarwal

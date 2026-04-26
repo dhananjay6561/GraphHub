@@ -3,21 +3,59 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
+const BASE_URL = "https://graphhub.dev";
+
 export const metadata: Metadata = {
-  title: "GraphHub — Codebase Knowledge Graph",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "GraphHub — Visualize any GitHub repo as a knowledge graph",
+    template: "%s — GraphHub",
+  },
   description:
-    "Replace github.com with graphhub.dev in any GitHub URL to explore that repo as an interactive knowledge graph.",
+    "Replace github.com with graphhub.dev in any GitHub URL to explore that repository as an interactive force-directed knowledge graph. Zero setup. Supports JS, TS, Python, and Go.",
   keywords: [
-    "codebase",
+    "codebase visualization",
     "knowledge graph",
     "GitHub",
     "developer tool",
-    "code visualization",
+    "code graph",
+    "dependency graph",
+    "force directed graph",
+    "code architecture",
+    "repo explorer",
   ],
+  authors: [{ name: "Dhananjay Aggarwal", url: "https://github.com/dhananjay6561" }],
+  creator: "Dhananjay Aggarwal",
   openGraph: {
-    title: "GraphHub",
-    description: "Interactive codebase knowledge graph visualizer",
+    title: "GraphHub — Visualize any GitHub repo as a knowledge graph",
+    description:
+      "Replace github.com with graphhub.dev to explore any repo as an interactive knowledge graph. Zero setup.",
+    url: BASE_URL,
+    siteName: "GraphHub",
     type: "website",
+    locale: "en_US",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "GraphHub" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GraphHub — Visualize any GitHub repo as a knowledge graph",
+    description: "Replace github.com with graphhub.dev to explore any repo as an interactive knowledge graph.",
+    images: ["/opengraph-image"],
+    creator: "@dhananjay6561",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: BASE_URL,
   },
 };
 

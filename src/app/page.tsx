@@ -1,10 +1,43 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Logo } from "@/components/Logo";
+
+export const metadata: Metadata = {
+  title: "GraphHub — Visualize any GitHub repo as a knowledge graph",
+  description:
+    "Replace github.com with graphhub.dev in any repo URL to explore its codebase as a living, interactive graph. Supports JavaScript, TypeScript, Python, and Go. Zero setup.",
+  alternates: { canonical: "https://graphhub.dev" },
+};
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UrlInput } from "@/components/UrlInput";
 import { ExampleRepos } from "@/components/ExampleRepos";
 import { FeatureHints } from "@/components/FeatureHints";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "GraphHub",
+  url: "https://graphhub.dev",
+  description:
+    "Visualize any GitHub repository as an interactive force-directed knowledge graph. Zero setup — replace github.com with graphhub.dev in any repo URL.",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Web",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  author: {
+    "@type": "Person",
+    name: "Dhananjay Aggarwal",
+    url: "https://github.com/dhananjay6561",
+  },
+  featureList: [
+    "Interactive force-directed graph rendering",
+    "JavaScript, TypeScript, Python, and Go parsing",
+    "Import and dependency edge visualization",
+    "Node type filtering (folder, file, function, class)",
+    "Dark and light mode",
+    "Zero configuration required",
+  ],
+};
 
 export default function Home() {
   return (
@@ -12,6 +45,10 @@ export default function Home() {
       className="flex flex-col min-h-screen"
       style={{ background: "var(--bg-primary)" }}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Header */}
       <header
         className="sticky top-0 z-10 flex items-center justify-between border-b px-4 sm:px-8 h-14"

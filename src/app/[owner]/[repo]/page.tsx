@@ -1,7 +1,36 @@
 "use client";
 
+import type { Metadata } from "next";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { saveRecent } from "@/lib/recent";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { owner: string; repo: string };
+}): Promise<Metadata> {
+  const { owner, repo } = params;
+  const title = `${owner}/${repo}`;
+  const description = `Explore the ${owner}/${repo} codebase as an interactive knowledge graph — nodes for files, functions, and classes; edges for imports and structure.`;
+  const url = `https://graphhub.dev/${owner}/${repo}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${title} — GraphHub`,
+      description,
+      url,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: `${title} — GraphHub`,
+      description,
+    },
+  };
+}
 import { GraphCanvas, type GraphCanvasHandle } from "@/components/Graph/GraphCanvas";
 import { DetailPanel } from "@/components/Graph/DetailPanel";
 import { Sidebar } from "@/components/Graph/Sidebar";

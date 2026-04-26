@@ -1,7 +1,22 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
+
+export const metadata: Metadata = {
+  title: "Engineering Case Study",
+  description:
+    "How GraphHub was built: canvas rendering over SVG, three-layer caching strategy, AST-based parsing pipeline, D3 force simulation physics, and the tradeoffs behind every major decision.",
+  alternates: { canonical: "https://graphhub.dev/showcase" },
+  openGraph: {
+    title: "GraphHub — Engineering Case Study",
+    description:
+      "Architecture, design decisions, and tradeoffs behind a codebase knowledge graph visualizer. Canvas rendering, three-layer caching, force simulation.",
+    url: "https://graphhub.dev/showcase",
+    type: "article",
+  },
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -192,9 +207,37 @@ function StatCard({ value, label }: { value: string; label: string }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  headline: "How GraphHub was built — Engineering Case Study",
+  description:
+    "Architecture, design decisions, and tradeoffs behind GraphHub: a codebase knowledge graph visualizer using canvas rendering, D3 force simulation, and three-layer caching.",
+  url: "https://graphhub.dev/showcase",
+  author: {
+    "@type": "Person",
+    name: "Dhananjay Aggarwal",
+    url: "https://github.com/dhananjay6561",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "GraphHub",
+    url: "https://graphhub.dev",
+  },
+  about: {
+    "@type": "SoftwareApplication",
+    name: "GraphHub",
+    url: "https://graphhub.dev",
+  },
+};
+
 export default function ShowcasePage() {
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
       {/* Header */}
       <header
