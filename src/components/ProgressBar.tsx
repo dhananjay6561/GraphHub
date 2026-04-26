@@ -12,26 +12,21 @@ const STEP_LABEL: Partial<Record<GraphStatus, string>> = {
 };
 
 export function ProgressBar({ status, stats }: Props) {
-  if (status === "idle") return null;
-
-  if (status === "ready" && stats) {
-    return (
-      <p className="text-[12px] font-mono" style={{ color: "var(--text-tertiary)" }}>
-        · {stats.nodeCount.toLocaleString()} nodes · {stats.edgeCount.toLocaleString()} edges
-      </p>
-    );
-  }
-
-  const label = STEP_LABEL[status];
-  if (!label) return null;
-
   return (
-    <p
-      className="flex items-center gap-1.5 text-[13px]"
-      style={{ color: "var(--text-secondary)" }}
-    >
-      <span className="animate-pulse-dot select-none">·</span>
-      {label}
-    </p>
+    <div aria-live="polite" aria-atomic="true" className="flex items-center">
+      {status === "ready" && stats ? (
+        <p className="text-[12px] font-mono" style={{ color: "var(--text-tertiary)" }}>
+          · {stats.nodeCount.toLocaleString()} nodes · {stats.edgeCount.toLocaleString()} edges
+        </p>
+      ) : STEP_LABEL[status] ? (
+        <p
+          className="flex items-center gap-1.5 text-[13px]"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          <span className="animate-pulse-dot select-none" aria-hidden="true">·</span>
+          {STEP_LABEL[status]}
+        </p>
+      ) : null}
+    </div>
   );
 }

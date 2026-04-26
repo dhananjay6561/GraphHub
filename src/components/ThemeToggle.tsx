@@ -8,7 +8,7 @@ export function ThemeToggle() {
     <button
       onClick={toggle}
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-      className="flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-150 hover:bg-[var(--bg-tertiary)]"
+      className="flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-150 hover:bg-[var(--bg-tertiary)] cursor-pointer"
       style={{ color: "var(--text-secondary)" }}
     >
       {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
