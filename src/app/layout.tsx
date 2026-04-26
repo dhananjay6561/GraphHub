@@ -7,6 +7,14 @@ const BASE_URL = "https://graphhub.dev";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
   title: {
     default: "GraphHub — Visualize any GitHub repo as a knowledge graph",
     template: "%s — GraphHub",
