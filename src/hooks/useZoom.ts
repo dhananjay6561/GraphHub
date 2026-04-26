@@ -55,5 +55,12 @@ export function useZoom(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
     onZoomRef.current = fn;
   }, []);
 
-  return { getTransform, resetZoom, zoomIn, zoomOut, setOnZoom };
+  const panBy = useCallback((dx: number, dy: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !zoomRef.current) return;
+    d3.select(canvas).call(zoomRef.current.translateBy, dx, dy);
+    onZoomRef.current?.();
+  }, [canvasRef]);
+
+  return { getTransform, resetZoom, zoomIn, zoomOut, setOnZoom, panBy };
 }

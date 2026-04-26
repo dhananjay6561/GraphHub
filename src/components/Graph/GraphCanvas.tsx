@@ -15,6 +15,7 @@ export interface GraphCanvasHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
+  panBy: (dx: number, dy: number) => void;
 }
 
 interface Props {
@@ -37,13 +38,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const { getTransform, resetZoom, zoomIn, zoomOut, setOnZoom } =
+    const { getTransform, resetZoom, zoomIn, zoomOut, setOnZoom, panBy } =
       useZoom(canvasRef);
 
-    useImperativeHandle(ref, () => ({ zoomIn, zoomOut, resetZoom }), [
+    useImperativeHandle(ref, () => ({ zoomIn, zoomOut, resetZoom, panBy }), [
       zoomIn,
       zoomOut,
       resetZoom,
+      panBy,
     ]);
 
     const { hitTest, setSelectedNode, setHoveredNode, setSearchQuery, requestRedraw } =
@@ -112,6 +114,26 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(
       setHoveredNode(null);
     }, [setHoveredNode]);
 
+    const handleKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+        const PAN = 60;
+        switch (e.key) {
+          case "ArrowLeft":  e.preventDefault(); panBy(-PAN, 0); break;
+          case "ArrowRight": e.preventDefault(); panBy(PAN, 0);  break;
+          case "ArrowUp":    e.preventDefault(); panBy(0, -PAN); break;
+          case "ArrowDown":  e.preventDefault(); panBy(0, PAN);  break;
+          case "+": case "=": e.preventDefault(); zoomIn();  break;
+          case "-":           e.preventDefault(); zoomOut(); break;
+          case "0":           e.preventDefault(); resetZoom(); break;
+          case "Escape":
+            setSelectedNode(null);
+            onNodeSelect(null);
+            break;
+        }
+      },
+      [panBy, zoomIn, zoomOut, resetZoom, setSelectedNode, onNodeSelect]
+    );
+
     return (
       <div
         ref={containerRef}
@@ -123,7 +145,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(
           onClick={handleClick}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="block w-full h-full cursor-crosshair"
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+          role="img"
+          aria-label={`Interactive codebase graph for ${owner}/${repo}. Use arrow keys to pan, + and - to zoom, Escape to deselect.`}
+          className="block w-full h-full cursor-crosshair focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
         />
       </div>
     );
